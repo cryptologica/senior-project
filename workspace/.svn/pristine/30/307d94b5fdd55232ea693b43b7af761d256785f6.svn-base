@@ -1,0 +1,172 @@
+package com.turingpoint.dbmodel.db.mapping;
+
+import org.hibernate.CacheMode;
+import org.hibernate.Criteria;
+import org.hibernate.FlushMode;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.StatelessSession;
+import org.hibernate.Transaction;
+import org.hibernate.boot.registry.StandardServiceRegistry;
+import org.hibernate.boot.registry.StandardServiceRegistryBuilder;
+import org.hibernate.cfg.Configuration;
+
+public class HibernateUtil {
+
+	private static SessionFactory sessionFactory;
+
+	public static enum DBAction {
+		CREATE, UPDATE, DELETE;
+	}
+
+	static {
+		try {
+			sessionFactory = new Configuration().configure().buildSessionFactory();
+			
+			/* 	Causing timeout problems?
+			Configuration cfg = new Configuration().configure("hibernate.cfg.xml");
+			StandardServiceRegistryBuilder sb = new StandardServiceRegistryBuilder();
+
+			sb.applySettings(cfg.getProperties());
+			StandardServiceRegistry standardServiceRegistry = sb.build();
+			sessionFactory = cfg.buildSessionFactory(standardServiceRegistry);
+			*/
+
+		} catch (Exception e) {
+			System.err.println("Initial SessionFactory creation failed." + e);
+			throw new ExceptionInInitializerError(e);
+		}
+	}
+
+	public static SessionFactory getSessionFactory() {
+		return sessionFactory;
+	}
+
+	public static void performAction(DBAction action, Object... objects) {
+		Session session = null;
+		Transaction transaction = null;
+		try {
+			session = getSession();			
+			session.clear();
+			transaction = session.beginTransaction();
+
+			for (Object object : objects) {
+				if (action.equals(DBAction.CREATE))
+					session.save(object);
+				else if (action.equals(DBAction.DELETE))
+					session.delete(object);
+				else if (action.equals(DBAction.UPDATE))
+					session.update(object);
+			}
+
+			transaction.commit();
+		} catch (Exception e) {
+			if (transaction != null)
+				transaction.rollback();
+			System.err.println("Unable to commit transaction, caused by: " + e.getMessage());
+			throw new RuntimeException("Unable to commit transaction, caused by: " + e.getCause());
+		} finally {
+			// session.flush();
+			// session.clear();
+			session.close();
+		}
+	}
+	
+	
+	public static void performStatelessAction(DBAction action, Object... objects) {
+		StatelessSession session = null;
+		Transaction transaction = null;
+		try {
+			session = getStatelessSession();
+			transaction = session.beginTransaction();
+
+			for (Object object : objects) {
+				if (action.equals(DBAction.CREATE))
+					session.insert(object);
+				else if (action.equals(DBAction.DELETE))
+					session.delete(object);
+				else if (action.equals(DBAction.UPDATE))
+					session.update(object);
+			}
+
+			transaction.commit();
+		} catch (Exception e) {
+			if (transaction != null)
+				transaction.rollback();
+			System.err.println("Unable to commit transaction, caused by: " + e.getMessage());
+		} finally {
+			// session.flush();
+			// session.clear();
+			session.close();
+		}
+	}
+	
+	
+
+	public static void save(Object... objects) {
+		Session session = null;
+		Transaction transaction = null;
+		try {
+			session = getSession();
+			transaction = session.beginTransaction();
+
+			for (Object object : objects)
+				session.save(object);
+
+			transaction.commit();
+		} catch (Exception e) {
+			if (transaction != null)
+				transaction.rollback();
+			System.err.println("Unable to commit transaction, caused by: " + e.getMessage());
+		} finally {
+			// session.disconnect();
+			session.flush();
+			session.close();
+		}
+	}
+
+	public static void delete(Object... objects) {
+		Session session = null;
+		Transaction transaction = null;
+		try {
+			session = getSession();
+			transaction = session.beginTransaction();
+
+			for (Object object : objects)
+				session.delete(object);
+
+			transaction.commit();
+		} catch (Exception e) {
+			if (transaction != null)
+				transaction.rollback();
+			System.err.println("Unable to commit delete transaction, caused by: " + e.getMessage());
+		} finally {
+			// session.flush();
+			session.close();
+		}
+	}
+
+	public static Session getSession() {
+		Session session = sessionFactory.openSession();
+		session.setCacheMode(CacheMode.IGNORE);	// Never cache
+		session.setFlushMode(FlushMode.ALWAYS);
+		return session;
+	}
+	
+	/**
+	 * Get a Stateless session (Does not implement any form of caching)
+	 * @return
+	 */
+	public static StatelessSession getStatelessSession() {
+		StatelessSession statelessSession = sessionFactory.openStatelessSession();
+		return statelessSession;
+	}
+
+	public static Criteria getCriteria(Session session, @SuppressWarnings("rawtypes") Class forClass) {
+		return session.createCriteria(forClass);
+	}
+	
+	public static Criteria getStatelessCriteria(StatelessSession session, @SuppressWarnings("rawtypes") Class forClass) {
+		return session.createCriteria(forClass);
+	}
+}

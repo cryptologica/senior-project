@@ -1,0 +1,168 @@
+$(document).ready(function() {
+	
+	var role = sessionStorage.getItem('role');
+	var courseID = sessionStorage.getItem('courseID');
+	
+	if(courseID == null)
+		loadPage("login");
+	
+
+	
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/courses/" + courseID + "/lectures";
+
+
+	// Ask the server for a list of courses available for current user
+	$.getJSON(url, lectureListCallback);
+});
+
+/**
+ * Clicked "New Lecture" button
+ */
+$(document).on('click', '#addLecture', function(event) {
+	$('#resetForm').click();	// Reset the form
+	$('#formError').empty();	// Clear any existing errors
+});
+
+
+/**
+ * Instructor - Manage lecture button pressed
+ */
+$(document).on('click', '.lectureBtn', function(event) {
+	var lectureID = ($(event.currentTarget).parent()).attr('id');
+	var lectureName = ($(event.currentTarget).parent()).text();
+	sessionStorage.setItem("lectureID", lectureID);
+	sessionStorage.setItem("lectureName", lectureName);
+	loadPage("poll");
+});
+
+
+/**
+ * Got the list of lectures back from the server
+ */
+function lectureListCallback(data, status){
+	if(status == "success"){
+		var lectures = data.Lectures;
+		
+		// Store sessions for future use
+		localStorage.setItem("lectures", JSON.stringify(lectures));
+		
+		// Check if there are no lectures
+		if(lectures.length == 0){
+			var noLecturesHTML = 
+				'<div class="jumbotron" id="noLectures">'+
+					'<h1>No Lectures For This Course</h1>'+
+					'<p>Create one by clicking the button below.</p>'+
+				'</div>';
+			$("#lectures").append(noLecturesHTML);
+			return;
+		}
+		
+		// Generate and add the HTML to the page
+		var lecturesHTML = 
+						 '<!-- /.row -->'+
+						 '<div class="row" id="pollsBtns">';
+		
+		// Extract info for each course
+		for (var i = 0; i < lectures.length; i++) {
+			var lectureID = lectures[i].lectureId;
+			var lectureName = lectures[i].name;
+			
+			lecturesHTML += getPollButtonHTML(lectureID, lectureName);
+			
+			/*
+			lecturesHTML +=
+            "<div class=\"col-lg-3 col-md-4 col-xs-12 thumb\" id=\"" + lectureID + "\">"+
+                "<a class=\"thumbnail lectureBtn\" href=\"#\">"+
+                    "<h1 class=\"text-center\">"+lectureName  + "</h1>"+
+                "</a>"+
+            "</div>";
+            */
+		}
+		lecturesHTML += '</div>';		// Close off outer row
+		$("#lectures").append(lecturesHTML);
+	}
+}
+
+/**
+ * Get the HTML text for the button used to manage a poll
+ */
+function getPollButtonHTML(lectureID, lectureName){
+	var returnString =
+        '<div class="col-lg-3 col-md-4 col-xs-12 thumb" id="' + lectureID + '">'+
+            '<a class="thumbnail lectureBtn" href="#">'+
+                '<h1 class="text-center">' +lectureName  + '</h1>'+
+            '</a>'+
+        '</div>';
+	return returnString;
+}
+
+/**
+ * If you press enter then this prevents the default submit event.
+ * Allows user to hit "Enter" on "Add New Lecture" dialog, instead of hitting "Submit".
+ * @param event
+ */
+function onSubmitNewLecture(event) {
+	event.preventDefault();
+	$('#formSubmit').click();
+}
+
+/**
+ * Click "Submit" button on modal form for adding a lecture
+ */
+$(document).on('click', '#formSubmit', function(event) {
+	var valid = true;
+	var lectureName = $('#lectureNameInput').val().trim();
+	// Make sure something was entered
+	if (lectureName.length <= 0) {
+		valid = false;
+		$('#formError').html( generateAlert("One or more fields were not set", 3) );
+	}
+	if (lectureName.length > 45) {
+		valid = false;
+		$('#formError').html( generateAlert("Lecture name exceeded 45 character limit", 4) );
+	}
+	if (valid) {
+		var userID = sessionStorage.getItem("userID").toString();
+		var courseID = sessionStorage.getItem("courseID").toString();
+
+		// If we're in production, use the real url
+		var url = sessionStorage.getItem("baseURL") + "/lecture/create";
+		var data = new Object();
+		data.userId = parseInt(userID);
+		data.courseId = parseInt(courseID);
+		data.name = lectureName;
+
+		$.ajax({
+			  method: "POST",
+			  url: url,
+			  contentType: "application/json",
+			  data: JSON.stringify(data),
+			  success: function(data, status){
+		    	// If we don't get an error back, then process the data
+		    	if (status == "success") {
+			    	$("#myModal").modal("hide");
+			    	
+			    	// Add new lecture to the local storage
+			    	var lectures = JSON.parse(localStorage.getItem("lectures"));
+			    	lectures.push(data);
+			    	localStorage.setItem("lectures", JSON.stringify(lectures));	// Store list of courses
+		    		
+		    		// Extract the data
+					var lectureID = data.lectureId;
+					var lectureName = data.name;
+					
+					// Clear 'no lectures' display if this is the first lecture
+					if( $('#noLectures').length ){
+						$("#lectures").empty();
+						$('#lectures').html('<div class="row" id="pollsBtns"></div>');
+					}
+		    		$('#pollsBtns').append( getPollButtonHTML(lectureID, lectureName) );
+		    	}
+		    	else {
+		    		alert("There was an error adding the course.");
+		    	}
+			  }
+		});
+	}
+});

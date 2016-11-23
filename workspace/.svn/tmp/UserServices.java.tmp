@@ -1,0 +1,511 @@
+package com.turingpoint.controller.auth;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import javax.annotation.security.PermitAll;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.json.JSONObject;
+import org.json.JSONArray;
+
+import com.turingpoint.authentication.AuthenticationFilter;
+import com.turingpoint.controller.ServerContext;
+import com.turingpoint.controller.ServerTypes;
+import com.turingpoint.dbmodel.db.mapping.Course;
+import com.turingpoint.dbmodel.db.mapping.User;
+import com.turingpoint.dbmodel.db.persister.CoursePersister;
+import com.turingpoint.dbmodel.db.persister.UserPersister;
+import com.turingpoint.dbmodel.model.Role;
+
+@Path("/users")
+@Produces(MediaType.APPLICATION_JSON)
+public class UserServices {
+
+	ServerContext server = ServerContext.INSTANCE;
+	
+	@PermitAll
+    @POST
+    @Path("/create")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response CreateNewUser(InputStream inputJSON) {
+    	
+    	JSONObject responseObject = new JSONObject();
+    	
+    	
+    	String msg = "";
+    	User user;
+    	
+    	// JSON parameters
+    	String fname;
+    	String lname;
+    	String email;
+    	String password;
+    	String role;
+    	String studentId;
+    	String code;
+    	
+    	// Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("UserServices | 64 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	// Validate input has required fields
+    	try
+    	{
+    		email = ServerTypes.escapeTags(inputObject.getString("email"));
+    		password = inputObject.getString("password");
+    		role = ServerTypes.escapeTags(inputObject.getString("role"));
+    		studentId = ServerTypes.escapeTags(inputObject.getString("studentId"));
+    		
+    		//fname = inputObject.getString("fname");
+    		//lname = inputObject.getString("lname");
+    		fname = ServerTypes.escapeTags(inputObject.getString("fname"));
+    		lname = ServerTypes.escapeTags(inputObject.getString("lname"));
+    		
+    		code = ServerTypes.escapeTags(inputObject.getString("code"));
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters";
+    		System.out.println("UserServices | 85 | Paramater Missing JSON | " + inputObject.toString());
+    		responseObject.put("msg", msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	// Verify instructor access code
+    	if (role.equals("INSTRUCTOR") && !code.equals("31415")) {
+    		// TODO: Allow for multiple valid access codes
+    		msg = "The instructor access code '"+ code + "' was invalid.";
+    		responseObject.put("msg", msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	try
+    	{
+    		// TODO: Verify everything, ensure DB doesn't throw exception for invalid/FK constraints
+    		Role roleObj;
+    		if (role.equals("STUDENT")) {
+    			roleObj = Role.STUDENT;
+    		}
+    		else if (role.equals("INSTRUCTOR")) {
+    			roleObj = Role.INSTRUCTOR;
+    		}
+    		else {
+        		msg = "The role " + role + " is invalid.";
+        		responseObject.put("msg", msg);
+        		return Response.status(400).entity(responseObject.toString()).build();
+    		}
+    		
+    		// Try to create a user with the given data
+    		user = UserPersister.createUser(fname, lname, email, password, roleObj, studentId);
+    		AuthenticationFilter.addNewUserToCachedCredentials(user.getUserId(), user.getPassword(), user.getRole(), user.getEmail());
+    		sendVerificationEmail(user);
+    	}
+    	catch(Exception e)
+    	{
+    		if(e.getCause().getMessage().contains("Duplicate entry")){	// User already exists
+        		responseObject.put("msg", "User with this email address already exists, please try to <a href=\"login.html\">login</a> to your account.");
+        		return Response.status(400).entity(responseObject.toString()).build();
+    		} else {	// Some other catastrophic error
+        		//TODO: Log why user could not be created, log stack trace and json
+        		msg = "Could Not Create User";
+        		responseObject.put("msg", msg);
+        		return Response.status(500).entity(responseObject.toString()).build();
+    		}
+    	}
+
+    	responseObject.put("fname", user.getfName());
+    	responseObject.put("lname", user.getlName());
+    	responseObject.put("userId", user.getUserId());
+    	responseObject.put("email", user.getEmail());
+    	
+    	return Response.status(200).entity(responseObject.toString()).build();
+    	
+    }
+	
+	private static void sendVerificationEmail(User user){
+		// NOTE: I'm defaulting the URL to prod. For local testing must manually change URL to http://localhost:8080/TuringPoint/...
+		SendEmail.sendEmailWithButton(user.getEmail(), "Email Verification Request", 
+				"<h3>Click the button below to verify your email address.</h3>"
+				+ "<p> You must verify your email address before you can use the TuringPoint polling service.", 
+				"Verify Email", "http://localhost:8080/TuringPoint/pages/login.html?registered=true&email=" + user.getEmail() + "&verify=" + user.getVerification());
+	}
+	
+	@PermitAll
+    @POST
+    @Path("/verify")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response verifyUser(InputStream inputJSON) {
+    	
+    	JSONObject responseObject = new JSONObject();
+    	
+    	String msg = "";
+    	// JSON parameters
+    	String email;
+    	String verify;
+    	
+    	// Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("UserServices | 64 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	// Validate input has required fields
+    	try
+    	{
+    		email = inputObject.getString("email");
+    		verify = inputObject.getString("verify");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters";
+    		System.out.println("UserServices | 179 | Paramater Missing JSON | " + inputObject.toString());
+    		responseObject.put("msg", msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	User user = null;
+    	try
+    	{
+    		user = User.getUser(email);
+    		if(!user.getVerification().equals(verify))	// Ensure verifications match
+    			return Response.status(400).entity("Invalid validation").build();
+    		else {
+    			user.setAccountVerified(true);
+    			user.update();
+    			AuthenticationFilter.verifyAccount(user.getEmail());
+    		}
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Could Not Verify User";
+    		responseObject.put("msg", msg);
+    		return Response.status(401).entity(responseObject.toString()).build();
+    	}
+    	return Response.status(200).build();
+    }
+    
+    @GET
+    @Path("/{userID}/courses")
+    public Response GetUserCourses(@PathParam("userID") Long userID) {
+
+    	JSONObject responseObject = new JSONObject();
+    	JSONArray classList = new JSONArray();
+    	String msg = "";
+    	
+    	List<Course> courseList;
+    	
+    	try
+    	{
+    		courseList = CoursePersister.getCoursesOfUser(userID);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Could not retrieve user courses for userID: "+ userID;
+    		System.out.println("UserServices | 153 | Could not get courses for userID | "+ userID);
+    		responseObject.put("msg",msg);
+    		return Response.status(401).entity(responseObject.toString()).build();
+    	}
+    	
+    	for(Course c : courseList)
+    	{
+    		JSONObject course = new JSONObject();
+    		course.put("courseId",c.getClassId());
+    		course.put("name",c.getName());
+    		course.put("description",c.getDescription());
+    		
+    		classList.put(course);
+    	}
+    	responseObject.put("Courses", classList);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @POST
+    @Path("/{userID}/reverify")
+    public Response reVerifyEmailAddress(InputStream inputJSON, @PathParam("userID") Long userID) {
+
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "", email;
+    	
+    	// Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("UserServices | 260 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	try
+    	{	// Ensure new email set
+    		email = ServerTypes.escapeTags(inputObject.getString("email"));
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters";
+    		System.out.println("UserServices | 273 | Paramater Missing JSON | " + inputObject.toString());
+    		responseObject.put("msg", msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	try
+    	{
+    		User user = User.getUser(userID);
+    		String oldEmail = user.getEmail();
+    		user.setEmail(email); // Update email address
+    	    String uuid = UUID.randomUUID().toString();
+    	    user.setVerification(uuid);	// Create new verification number
+    		user.update();
+    		AuthenticationFilter.updateUsersEmail(oldEmail, email);
+    		sendVerificationEmail(user);
+    	}
+    	catch(NullPointerException e)
+    	{
+    		//TODO: Log why user could not be created, log stack trace and json
+    		msg = "User not found.";
+    		responseObject.put("msg", msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Could not update email address.";
+    		if(e.getMessage().contains("Duplicate entry"))
+    			msg += "Email address already used on another account.";
+    		responseObject.put("msg", msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	responseObject.put("msg", "Sent Email");
+    	responseObject.put("email", email);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @GET
+    @Path("/{userID}/courses/joinable")
+    public Response GetJoinableUserCourses(@PathParam("userID") Long userID) {
+
+    	JSONObject responseObject = new JSONObject();
+    	JSONArray courseList = new JSONArray();
+    	String msg = "";
+    	
+    	// Get list of courses student is already in
+    	List<Course> joinedCoursesList;
+    	try
+    	{
+    		joinedCoursesList = CoursePersister.getCoursesOfUser(userID);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Could not retrieve user courses for userID: "+ userID;
+    		System.out.println("UserServices | 153 | Could not get courses for userID | "+ userID);
+    		responseObject.put("msg",msg);
+    		return Response.status(401).entity(responseObject.toString()).build();
+    	}
+    	
+    	ArrayList<Long> joinedCourseIds = new ArrayList<Long>();
+    	for (Course c : joinedCoursesList)
+    	{
+    		joinedCourseIds.add(c.getClassId());
+    	}
+    	
+    	// Get list of all courses
+    	List<Object> courses;
+    	try
+    	{
+    		courses = CoursePersister.getAllCoursesWithInstructorName();
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Error Getting all courses";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	for (int i=0; i < courses.size(); i++)
+    	{    		
+    		JSONObject course = new JSONObject();
+    		Object[] tempCourse = (Object[]) courses.get(i);
+    		
+    		// If course was joined already, don't add it
+    		boolean shouldAdd = true;
+    		int currId = (int) tempCourse[0];
+    		for (long id : joinedCourseIds)
+    		{
+    			if (id == currId)
+    			{
+    				shouldAdd = false;
+    				break;
+    			}
+    		}
+    		
+    		if (shouldAdd)
+    		{
+        		course.put("courseId", tempCourse[0]);
+        		course.put("fName", tempCourse[1]);
+        		course.put("lName", tempCourse[2]);
+        		course.put("name", tempCourse[3]);
+        		course.put("description", tempCourse[4]);
+        		
+        		courseList.put(course);
+    		}
+    	}
+    	
+    	responseObject.put("Courses", courseList);
+    	
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @PUT
+    @Path("/{userID}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response UpdateUser(InputStream inputJSON, @PathParam("userID") Long userID) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	
+    	//Declared vars
+    	User targetUser;
+    	Role userRole;
+    	String studentId;
+
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet";
+    		System.out.println("UserServices | 198 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//validate input object, if broken then return error, else keep going
+    	try
+    	{
+    		targetUser = User.getUser(userID);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Could not retrieve user courses for userID: "+ userID;
+    		System.out.println("UserServices | 153 | Could not get courses for userID | "+ userID);
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	
+    	//Check if null etc, if null then return error, else prepare to modify.
+    	if(!(targetUser == null))
+    	{
+    		try
+    		{
+    			targetUser.setEmail(inputObject.getString("email"));
+    			targetUser.setPassword(inputObject.getString("password"));
+
+	    	
+    			userRole = Role.STUDENT;
+		    	if(inputObject.get("role").equals(Role.INSTRUCTOR))
+		    	{
+		    		targetUser.setRole(Role.INSTRUCTOR);
+		    	}
+		    	
+		    	studentId = null;
+		    	if(inputObject.get("role").equals(Role.INSTRUCTOR))
+		    	{
+	
+		    		studentId = inputObject.getString("studentId");
+		    	}
+	    	
+    		}
+	    	catch(Exception e)
+	    	{
+	    		msg = "Request lacks required parameters";
+	    		System.out.println("UserServices | 246 | Paramater Missing JSON | " + inputObject.toString());
+	    		responseObject.put("msg",msg);
+	    		return Response.status(415).entity(responseObject.toString()).build();
+	    	}
+	    	
+	    	targetUser.setRole(userRole);
+	    	targetUser.setStudentId(studentId);
+	    	targetUser.setfName(inputObject.getString("fname"));
+	    	targetUser.setlName(inputObject.getString("lname"));
+	    	
+	    	targetUser.update();
+    	}    	
+    	///Respond
+    	msg = "Update Succeeded";
+    	responseObject.put("msg", msg);
+    	return Response.status(200).entity(responseObject.toString()).build();
+
+    	
+    }
+    
+    @GET
+    @Path("/{userID}")
+    public Response getUser(@PathParam("userID") Long userID) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg;
+    	
+    	User targetUser;
+    	
+    	try
+    	{
+    		targetUser = User.getUser(userID);
+    		//if user is null change response code etc
+    		targetUser.setPassword("");
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Could not retrieve userID: "+ userID;
+    		System.out.println("UserServices | 287 | Could not get userID | "+ userID);
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	///Respond
+    	return Response.status(200).entity(targetUser).build();
+
+    	
+    }
+}

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+	<!--  Start - Should be present on top of head on all pages -->
+    <script src="../bower_components/jquery/jquery-latest.min.js" type="text/javascript"></script>
+	
+	<!-- JQuery cookie manager - https://github.com/js-cookie/js-cookie -->
+	<script src="../js/cookieMonster.js"></script>
+	
+	<!-- Favorite Icons -->
+    <link rel="icon" type="image/png" href="../img/favicon-32x32.png" sizes="32x32" />
+	<link rel="icon" type="image/png" href="../img/favicon-16x16.png" sizes="16x16" />
+	
+	<!-- Main js used to inject content used throughout the site, and manage session vars -->
+	<script src="../js/main.js" type="text/javascript"></script>
+	
+	<!--  End - Should be present on top of head on all pages -->
+	<script src="../js/managestudents.js" type="text/javascript"></script>
+	
+	<!-- JQuery url query manager - http://stackoverflow.com/questions/22258793/set-url-parameters-without-causing-page-refresh -->
+	<script src="../js/query-string.js"></script>
+	
+	<!-- JQuery url query manager - https://github.com/alrusdi/jquery-plugin-query-object -->
+	<script src="../js/jquery-object.js"></script>
+	
+	<!-- Custom (Formerly Injected) -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Turing Point - Clicker Replacement</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="../bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- MetisMenu CSS -->
+    <link href="../bower_components/metisMenu/dist/metisMenu.min.css" rel="stylesheet">
+
+    <!-- Timeline CSS -->
+    <link href="../dist/css/timeline.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="../dist/css/sb-admin-2.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="../bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    
+    <!-- Our CSS -->
+    <link href="../css/style.css" rel="stylesheet" type="text/css">
+    
+    <!-- Student page css -->
+     <link href="../css/managestudents.css" rel="stylesheet" type="text/css">
+    
+    <!-- Bootstrap Core JavaScript -->
+    <script src="../bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <!-- Metis Menu Plugin JavaScript -->
+    <script src="../bower_components/metisMenu/dist/metisMenu.min.js"></script>
+    
+    <!-- Bootstrap Switch JavaScript -->
+<script src="../bower_components/bootstrap-switch-master/dist/js/bootstrap-switch.min.js"></script>
+
+<!-- Bootstrap Switch CSS -->
+<link href="../bower_components/bootstrap-switch-master/dist/css/bootstrap3/bootstrap-switch.min.css" rel="stylesheet">
+
+    <!-- Custom Theme JavaScript -->
+    <script src="../dist/js/sb-admin-2.js"></script>
+    
+        <!--  tagging functionality -->
+<script src="../js/tagging.js" type="text/javascript"></script>
+
+</head>
+
+<body>
+
+	<div id="wrapper">
+
+		<!-- Header injected here -->
+		<div id="header"></div>
+
+		<!-- Page Content injected here-->
+		<div id="page-wrapper" style="height: 100%;">
+			<!-- non table crap goes here -->
+			<div id="loadIndicator" class="row">
+				<div class="col-sm-12">
+					<div class="block text-center">
+						<span class="fa-spin fa fa-refresh fa-5x"></span>
+					</div>
+				</div>
+			</div>
+			<div id="noStudentBox" class="row">
+				<div class="col-sm-12">
+				</div>
+			</div>
+			<div id="studentContent">
+				<div class="row">
+					<div class="col-sm-8">
+						<h2>Student Information</h2>
+					</div>
+					<div class="col-sm-4">
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-sm-2">
+						<img id="profileImage" src="../img/userIcon_s.png" alt="User profile picture" class="img-thumbnail"  height="128" width="128">
+					</div>
+					<div class="col-sm-3">
+						<label>First Name:</label>
+						<span id="fname"></span>
+						<br>
+						<label>Email:</label>
+						<span id="email"></span>
+					</div>
+					<div class="col-sm-3">
+						<label>Last Name:</label>
+						<span id="lname"></span>
+						<br>
+						<label>Student ID:</label>
+						<span id="studentId"></span>
+					</div>
+					<div class="col-sm-3">
+						<label id="activeStudentLabel" style="visibility: hidden;">Active:</label>
+						<select id="activeStudentSelector" style="visibility: hidden;" name="active"><option value="yes">Yes</option><option value="no">no</option></select>
+						<br>
+					</div>
+					<div class="col-sm-1">
+					</div>
+				</div>
+				<div class="row">
+					<div class="col-sm-12">
+						<br>
+					</div>
+				</div>
+				<!-- student results info -->
+				<div class="row">
+			        <div class="col-md-12">
+			        <h2>Student Results <small>(Only lectures the student has participated in will be viewable)</small></h2>
+			        </div>
+		        </div>
+				
+				<div id="studentResultsInfoDiv" class="panel-group">
+					<div class="block text-center">
+						<span class="fa-spin fa fa-refresh fa-5x"></span>
+					</div>
+				</div>
+				
+				<div id="storageBox" style="display:none;">
+				<!-- Template for generated content-->
+<div class="row">
+    <div class="col-md-12">
+        <div >
+            <div class="panel panel-default" >
+                <div class="panel-heading" role="button" class="h3" data-toggle="collapse" data-parent="#studentResultsInfoDiv" href="#toggle">
+                    <div class="row">
+                        <div class="col-md-4 text-center">
+                            <span class="h2 lectureName"> </span>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <label><i class="participationStatus"> </i></label>
+                        </div>
+                        
+                        <div class="col-md-2 text-center">
+                            <label>Score:</label><i id="pointScore"></i>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <label >
+                                Answered <span class=" numAnswered badge"></span>
+                            </label>
+                        </div>
+                        <div class="col-md-2 text-center">
+                            <label >
+                                Published <span class="numPublished badge"></span>
+                            </label>
+                        </div>
+                        
+                    </div>
+                </div>
+                <!-- toggledemo -->
+                <div id="toggle" class="collapse" class="panel-body">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <!-- upper content -->
+                            <!-- header start -->
+                            <div style="margin-top: 5px;" class="row hidden-xs hidden-sm hidden-md">
+                                
+                                <div class="col-sm-2 col-md-1 text-center"><label>Date</label></div>
+                                <div class="col-sm-2 col-md-2 text-center"><label>Question</label></div>
+                                <div class="col-sm-2 col-md-2 text-center">
+                                    <div class="row" id="questionCorrectnessTooltip">
+                                        <div class="col-md-12">
+                                            <a data-original-title="'Correct' indicates the student selected the correct answer or all correct answers. 'Partial' applies to multiple answer questions and indicates not all correct answers were selected. 'Incorrect' indicates no correct answer was selected." data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+                                            <label>Correctness</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-1 col-md-1 text-center">
+                                    <div class="row" id="questionScoreTooltip">
+                                        <div class="col-md-12">
+                                            <a data-original-title="Scores are calculated automatically by sum of the number of points assigned to the selected responses. Currently, only correct answers are worth points" data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+                                            <label>Score</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-1 col-md-2 text-center"><label>Results</label></div>
+                                <div class="col-sm-2 col-md-2 text-center"><label>Tags</label></div>
+                                <div class="col-sm-2 col-md-2 text-center">
+                                    <div class="row" id="questionCreditTooltip">
+                                        <!-- <div class="col-md-12">
+                                            <a data-original-title="(NOT YET IMPLEMENTED) When set to 'Auto' the application will assign point values according to question points. If set to 'Credit' the student's answer will receive full credit regardless." data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+                                            <label>Grading</label>
+                                        </div> -->
+                                    </div>
+                                </div>
+                            </div>
+                            <!--  header end -->
+                            <!-- Question 1 start -->
+                            <div class="questionCollection">
+                            <div class="questionBlock">
+	                            <div style="margin-top: 5px; margin-bottom: 5px;" class="row collapsyRow hidden-xs hidden-sm hidden-md visible-lg visible-xl">
+	                                <div class="col-sm-1 text-center questionDate"> </div>
+	                                <div class="col-sm-2 text-center questionTitle"> </div>
+	                                <div class="col-sm-2 text-center questionCorrectness"> </div>
+	                                <div class="col-sm-1 col-md-1 text-center questionPoints"> </div>
+	                                <div class="col-sm-2 text-center questionPublished"> </div>
+	                                <div class="col-sm-2 text-center questionTags"> </div>
+	                                <div class="col-sm-2 text-center questionGrading">
+	                                   <!--  <input id="manualGrade1" type="checkbox" name="manualGradeSwitch">  -->
+	                                </div>
+	                            </div>
+                            
+	                            <div style="margin-top: 5px; margin-bottom: 5px;" class="row collapsyRow visible-md hidden-sm hidden-xs hidden-lg hidden-xl">
+	                                <div class="row">
+	                                    <div class="col-xs-3 text-right">
+	                                        <label>Date</label> 
+	                                    </div>
+	                                    <div class="col-xs-3 questionDate">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-3 text-right">
+	                                        <label>Question</label> 
+	                                    </div>
+	                                    <div class="col-xs-3 questionTitle">
+	                                        
+	                                    </div>
+	                                </div>
+	                                <div class="row">
+	                                    <div class="col-xs-3 text-right">
+	                                        <div class="row " id="questionCorrectTooltip">
+	                                            <div class="col-xs-12">
+	                                                    <a data-original-title="'Correct' indicates the student selected the correct answer or all correct answers. 'Partial' applies to multiple answer questions and indicates not all correct answers were selected. 'Incorrect' indicates no correct answer was selected." data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+	                                                    <label>Rating</label>
+	                                            </div>
+	                                        </div>
+	                                    </div>
+	                                    <div class="col-xs-3 questionCorrectness">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-3 text-right">
+	                                        <div class="row " id="questionScoreTooltip">
+	                                            <div class="col-md-12">
+	                                                <a data-original-title="Scores are calculated automatically by sum of the number of points assigned to the selected responses. Currently, only correct answers are worth points" data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+	                                                <label>Score</label>
+	                                            </div>
+	                                        </div>
+	                                    </div>
+	                                    <div class="col-xs-3 questionPoints">
+	                                        
+	                                    </div>
+	                                </div>
+	
+	                                <div class="row">
+	                                    <div class="col-xs-3 text-right">
+	                                        <label>Results</label>
+	                                    </div>
+	                                    <div class="col-xs-3 questionPublished">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-3 text-right">
+	                                        <label>Tags</label>
+	                                    </div>
+	                                    <div class="col-xs-3 questionTags">
+	                                        
+	                                    </div>
+	                                </div>
+	                                <div class="row">
+	                                    <div class="col-xs-3 text-right">
+	                                    </div>
+	                                    <div class="col-xs-3 text-right">
+	                                    </div>
+	                                    <div class="col-xs-3 text-right">
+	                                        <div style="margin-top: 5px;" class="row " id="questionCreditTooltip">
+	                                            <!-- <div class="col-md-12">
+                                            <a data-original-title="(NOT YET IMPLEMENTED) When set to 'Auto' the application will assign point values according to question points. If set to 'Credit' the student's answer will receive full credit regardless." data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+                                            <label>Grading</label>
+                                        </div> -->
+	                                        </div>
+	                                    </div>
+	                                    <div class="col-xs-3 questionGrading">
+	                                        
+	                                    </div>
+	                                </div>
+	                            </div>
+
+	                            <div style="margin-top: 5px; margin-bottom: 5px;" class="row collapsyRow visible-xs visible-sm hidden-md hidden-lg hidden-xl">
+	                                <div class="row">
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                    <div class="col-xs-4 text-right">
+	                                        <label>Date</label> 
+	                                    </div>
+	                                    <div class="col-xs-6 questionDate">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                </div>
+	                                <div class="row">
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                    <div class="col-xs-4 text-right">
+	                                        <label>Question</label> 
+	                                    </div>
+	                                    <div class="col-xs-6 questionTitle">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                </div>
+	                                <div class="row">
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                    <div class="col-xs-4 text-right">
+	                                        <div class="row " id="questionCorrectTooltip">
+	                                            <div class="col-xs-12">
+	                                                    <a data-original-title="'Correct' indicates the student selected the correct answer or all correct answers. 'Partial' applies to multiple answer questions and indicates not all correct answers were selected. 'Incorrect' indicates no correct answer was selected." data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+	                                                    <label>Rating</label>
+	                                            </div>
+	                                        </div>
+	                                    </div>
+	                                    <div class="col-xs-6 questionCorrectness">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                </div>
+	                                <div class="row">
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                    <div class="col-xs-4 text-right">
+	                                        <div class="row " id="questionScoreTooltip">
+	                                            <div class="col-md-12">
+	                                                <a data-original-title="Scores are calculated automatically by sum of the number of points assigned to the selected responses. Currently, only correct answers are worth points" data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+	                                                <label>Score</label>
+	                                            </div>
+	                                        </div>
+	                                    </div>
+	                                    <div class="col-xs-6 questionPoints">
+	                                       
+	                                    </div>
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                </div>
+	                                <div class="row">
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                    <div class="col-xs-4 text-right">
+	                                        <label>Results</label>
+	                                    </div>
+	                                    <div class="col-xs-6 questionPublished">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                </div>
+	                                <div class="row">
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                    <div class="col-xs-4 text-right">
+	                                        <label>Tags</label>
+	                                    </div>
+	                                    <div class="col-xs-6 questionTags">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                </div>
+	                                <div class="row">
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                    <div class="col-xs-4 text-right">
+	                                        <div style="margin-top: 5px;" class="row " id="questionCreditTooltip">
+	                                            <!-- <div class="col-md-12">
+                                            <a data-original-title="(NOT YET IMPLEMENTED) When set to 'Auto' the application will assign point values according to question points. If set to 'Credit' the student's answer will receive full credit regardless." data-toggle="tooltip" data-placement="top" title=""> <span class="glyphicon glyphicon-question-sign"></span></a>
+                                            <label>Grading</label>
+                                        </div> -->
+	                                        </div>
+	                                    </div>
+	                                    <div class="col-xs-6 questionGrading">
+	                                        
+	                                    </div>
+	                                    <div class="col-xs-1 ">
+	                                    </div>
+	                                </div>
+	                            </div>
+                             </div> <!-- end questionblock -->
+                            </div>
+                            <!-- /upper content -->
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <!-- <div class="row collapsyRow">
+                                <div class="col-md-1">
+                                </div>
+                                <div class="col-md-10">
+                                    <div class="btn-group btn-group-justified" role="group" aria-label="">
+                                      <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-default">Jump to Polls</button>
+                                      </div>
+                                      <div class="btn-group" role="group">
+                                        <button type="button" class="btn btn-default">Jump to Results</button>
+                                      </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-1">
+                                </div>
+                            </div> -->
+                        </div>
+                    
+                        <div class="col-md-12">
+                            <div class="row">
+                                <!-- <div class="text-center">
+                                    <i>Tags in lecture</i>
+                                </div>
+                                <div class="col-md-1">
+                                </div>
+                                <div class="col-md-10 lectureTagBox">
+                                    
+                                </div>
+                                <div class="col-md-1">
+                                </div> -->
+                             </div>
+                         </div>
+                    </div>
+                </div>
+                <!-- /#toggledemo -->
+            </div>
+        </div>
+    </div>
+</div>
+				
+				</div>
+				
+				<!-- student results info end -->
+			</div>
+		</div>
+		<!-- /#page-wrapper -->
+
+	</div>
+	<!-- /#wrapper -->
+
+
+</body>
+
+</html>

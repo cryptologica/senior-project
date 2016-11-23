@@ -1,0 +1,242 @@
+package com.turingpoint.dbmodel.db.persister;
+
+import java.util.ArrayList;
+import java.util.Date;
+import java.util.List;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.StatelessSession;
+import org.hibernate.criterion.ProjectionList;
+import org.hibernate.criterion.Projections;
+import org.hibernate.criterion.Restrictions;
+import org.hibernate.transform.AliasToBeanResultTransformer;
+
+import com.turingpoint.dbmodel.db.dto.LectureStatus;
+import com.turingpoint.dbmodel.db.mapping.ActiveQuestion;
+import com.turingpoint.dbmodel.db.mapping.HibernateUtil;
+import com.turingpoint.dbmodel.db.mapping.Lecture;
+import com.turingpoint.dbmodel.db.mapping.Question;
+
+/**
+ * Lecture persister to create and get lecture details.
+ * 
+ * @author scotthadley
+ */
+public class LecturePersister extends HibernateUtil {
+
+	/**
+	 * Get all the lectures of a course from a provided course ID (Excluding the question bank course)
+	 */
+	@SuppressWarnings("unchecked")
+	public static List<Lecture> getLecturesForCourse(Long courseId) {
+		Session session = null;
+		try {
+			session = getSession();
+			Criteria criteria = HibernateUtil.getCriteria(session, com.turingpoint.dbmodel.db.mapping.Lecture.class);
+			criteria.add(Restrictions.eq("classId", courseId));
+			criteria.add(Restrictions.eq("isQuestionBank", false));
+			return criteria.list();
+		} finally {
+			session.close();
+		}
+	}
+
+	/**
+	 * NOTE: This is for the instructor to get all the questions in a class. Get
+	 * a list of Lecture Status' (Which contain a set of question Ids, title,
+	 * and version) for a provided lecture id.
+	 */
+	public static List<LectureStatus> getQuestionsForLecture(Long lectureId) {
+		return questionStatusHelper(lectureId, null, false);
+	}
+	
+	/**
+	 * Get a list of the QuestionBank questions for a course
+	 * @param courseId
+	 * @return
+	 */
+	public static List<LectureStatus> getQuestionBankQuestionsForCourse(Long courseId) {
+		return questionStatusHelper(null, courseId, true);
+	}
+	
+	/**
+	 * Get either the questions for the lecture, or the question bank questions.
+	 * @param lectureId - Pass if wanting to get the questions for a lecture, null otherwise
+	 * @param courseId - Pass if wanting to get the question bank questions for a course, null otherwise
+	 * @param isQuestionBank - True to get Question Bank questions, False to get Lecture questions
+	 * @return
+	 */
+	private static List<LectureStatus> questionStatusHelper(Long lectureId, Long courseId, boolean isQuestionBank){
+		// Session session = null;
+		StatelessSession session = null;
+
+		try {
+			session = getStatelessSession();
+			Criteria criteria = HibernateUtil.getStatelessCriteria(session, Question.class);
+			if(isQuestionBank)
+				criteria.add(Restrictions.eq("lectureId", getQuestionBankLecture(courseId).getLectureId()));
+			else
+				criteria.add(Restrictions.eq("lectureId", lectureId));
+			criteria.add(Restrictions.eq("isQuestionBank", isQuestionBank));
+
+			ProjectionList projList = Projections.projectionList();
+			projList.add(Projections.property("questionId").as("questionId"));
+			projList.add(Projections.property("title").as("title"));
+			projList.add(Projections.property("version").as("version"));
+			projList.add(Projections.groupProperty("questionId"));
+
+			criteria.setProjection(projList);
+
+			criteria.setResultTransformer(new AliasToBeanResultTransformer(LectureStatus.class));
+
+			return criteria.list();
+		} finally {
+			session.close();
+		}
+	}
+
+	/**
+	 * Student gets the status of the active questions of a lecture
+	 * 
+	 * @param classId
+	 * @return
+	 */
+	public static List<LectureStatus> getActiveQuestions(Long courseId) {
+
+		// TODO: Convert to inner join
+
+		Session session = null;
+
+		try {
+			session = getSession();
+
+			Criteria criteria = HibernateUtil.getCriteria(session, ActiveQuestion.class);
+			criteria.add(Restrictions.eq("activeQuestionId.classId", courseId));
+			criteria.setProjection(Projections.property("activeQuestionId.questionId"));
+			List<Long> questionIds = criteria.list();
+
+			List<LectureStatus> returnStatus = new ArrayList<LectureStatus>();
+			for (Long questionId : questionIds) {
+				Criteria newCriteria = HibernateUtil.getCriteria(session, Question.class);
+				newCriteria.add(Restrictions.eq("questionId", questionId));
+				newCriteria.add(Restrictions.eq("isQuestionBank", false));
+
+				ProjectionList projList = Projections.projectionList();
+				projList.add(Projections.property("questionId").as("questionId"));
+				projList.add(Projections.property("title").as("title"));
+				projList.add(Projections.property("version").as("version"));
+				projList.add(Projections.groupProperty("questionId"));
+
+				newCriteria.setProjection(projList);
+
+				newCriteria.setResultTransformer(new AliasToBeanResultTransformer(LectureStatus.class));
+				returnStatus.add((LectureStatus) newCriteria.uniqueResult());
+			}
+			return returnStatus;
+
+		} finally {
+			session.close();
+		}
+
+	}
+
+	/**
+	 * Get the name of a lecture
+	 */
+	public static String getLectureName(Long lectureId) {
+		Session session = null;
+		try {
+			session = getSession();
+			Criteria criteria = HibernateUtil.getCriteria(session, Lecture.class);
+			criteria.add(Restrictions.eq("lectureId", lectureId));
+			criteria.setProjection(Projections.property("name"));
+			return (String) criteria.uniqueResult();
+		} finally {
+			session.close();
+		}
+
+	}
+
+	/**
+	 * Instructor creates a new lecture
+	 */
+	public static Lecture createLecture(Long courseId, String name) {
+		Lecture lecture = new Lecture();
+		lecture.setClassId(courseId);
+		lecture.setName(name);	
+		lecture.setIsQuestionBank(false);
+		lecture.setDatePublished(new Date());
+		return lecture.save();
+	}
+
+	public static Lecture updateLectureName(Long lectureId, String newName) {
+		Lecture lecture = Lecture.getLecture(lectureId);
+		lecture.setName(newName);
+		return lecture.update();
+	}
+
+	
+	public static Lecture getQuestionBankLecture(Long courseId) {
+		Session session = null;
+		try {
+			session = getSession();
+			Criteria criteria = session.createCriteria(Lecture.class);
+			criteria.add(Restrictions.eq("classId", courseId));
+			criteria.add(Restrictions.eq("isQuestionBank", true));
+			Lecture returnLecture = (Lecture) criteria.uniqueResult();
+			
+			if(returnLecture == null){
+				System.out.println("\n**************** Creating a new Question Bank Lecture.\nIf you see this multiple times for the same course then something has gone seriously wrong. \n**************");;
+				Lecture lecture = new Lecture();
+				lecture.setClassId(courseId);
+				lecture.setIsQuestionBank(true);
+				lecture.setName("[[QUESTIONBANK]]");
+				return lecture.save();
+			}else 
+				return returnLecture;
+		} catch (NullPointerException e){
+			System.out.println(e.getMessage());
+			return null;
+		} finally {
+			session.close();
+		}
+	}
+	
+	/**
+	 * 
+	 * @param lectureID
+	 */
+	public static void publishAllQuestionsInLecture(Long lectureID) {
+	    Session session = null;
+	    try {
+	      session = getSession();
+	      session.getTransaction().begin();
+		  String query = "UPDATE Question SET resultsPublished = 1 WHERE lectureId = " + lectureID + ";";
+		  session.createSQLQuery(query).executeUpdate();
+		  session.getTransaction().commit();
+	    }
+	    finally {
+	      session.close();
+	    }
+	}
+	
+	/**
+	 * 
+	 * @param lectureID
+	 */
+	public static void unpublishAllQuestionsInLecture(Long lectureID) {
+	    Session session = null;
+	    try {
+	      session = getSession();
+	      session.getTransaction().begin();
+		  String query = "UPDATE Question SET resultsPublished = 0 WHERE lectureId = " + lectureID + ";";
+		  session.createSQLQuery(query).executeUpdate();
+		  session.getTransaction().commit();
+	    }
+	    finally {
+	      session.close();
+	    }
+	}
+	
+}

@@ -1,0 +1,140 @@
+package com.turingpoint.dbmodel.db.mapping;
+
+import java.util.Date;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+import javax.persistence.Temporal;
+import javax.persistence.TemporalType;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.criterion.Restrictions;
+import org.pojomatic.Pojomatic;
+import org.pojomatic.annotations.AutoProperty;
+
+@Entity
+@Table
+@AutoProperty
+public class Lecture extends HibernateUtil {
+
+	@Id
+	@GenericGenerator(name="gen",strategy="increment")
+	@GeneratedValue(generator="gen")
+	private Long lectureId;
+
+	@Column
+	private Long classId;
+
+	@Column
+	private String name;
+	
+	@Column
+	private Boolean isQuestionBank;
+	
+	/**
+	 * The date the instructor decides to publish the lecture (to the students)
+	 */
+	@Column(columnDefinition="DATETIME")
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date datePublished;
+	
+	/**
+	 * The date the lecture was created
+	 */
+	@Column(columnDefinition="DATETIME")
+	@Temporal(TemporalType.TIMESTAMP)
+	private Date dateCreated;
+
+	public Date getDatePublished() {
+		return datePublished;
+	}
+	
+	public Date getDateCreated() {
+		return dateCreated;
+	}
+
+	public Boolean getIsQuestionBank() {
+		return isQuestionBank;
+	}
+
+	public Long getLectureId() {
+		return lectureId;
+	}
+
+	public Long getClassId() {
+		return classId;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setLectureId(Long lectureId) {
+		this.lectureId = lectureId;
+	}
+
+	public void setClassId(Long classId) {
+		this.classId = classId;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+	
+	public void setIsQuestionBank(Boolean isQuestionBank) {
+		this.isQuestionBank = isQuestionBank;
+	}
+	
+	public void setDatePublished(Date datePublished) {
+		this.datePublished = datePublished;
+	}
+	
+	public void setDateCreated(Date dateCreated) {
+		this.dateCreated = dateCreated;
+	}
+
+	public static Lecture getLecture(Long lectureId) {
+      Session session = null;
+      try{
+        session = getSession();
+        Criteria criteria = session.createCriteria(Lecture.class);
+        return (Lecture) criteria.add(Restrictions.eq("lectureId", lectureId)).uniqueResult();
+      } finally {
+        session.close();
+      }
+	}
+	
+	public Lecture save(){
+		HibernateUtil.save(this);
+		return this;
+	}
+	
+	public void delete(){
+		HibernateUtil.delete(this);
+	}
+	
+	public Lecture update(){
+		HibernateUtil.performAction(DBAction.UPDATE, this);
+		return this;
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		return Pojomatic.equals(this, o);
+	}
+
+	@Override
+	public int hashCode() {
+		return Pojomatic.hashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return Pojomatic.toString(this);
+	}
+}

@@ -1,0 +1,230 @@
+.questionGroup {
+	min-width: 130px;
+	max-width: 130px;
+}
+
+.label {
+	font-size: 150%;
+}
+
+.courseFieldset {
+	padding: 0.2em;
+	border:1px solid #1c94c4;
+	margin: 0.8em;
+	display: block;
+}
+
+.lectureGroup {
+	display: inline-block;
+	padding: 0.2em 0.5em;
+	margin: 0.3em;
+}
+
+.borderTable,
+table.borderTable td,
+table.borderTable th  {
+	border: 1px solid black;
+	padding: 1.0em 1.5em;
+	border-spacing: 0px;
+    border-collapse: collapse;
+}
+
+table.borderTable th {
+	background-color: #e1e1e1;
+}
+
+.centered {
+    display: table;
+    margin: 0 auto;
+}
+
+
+.topicButton {
+	border: 1px solid;
+    border-radius: 5px;
+	background-color: #FFD9B4;
+}
+
+.topicButton:active {
+	background-color: #FFFFFF;
+}
+
+.oneCourse {
+	margin: 0.4em;
+}
+
+#coursesID {
+	margin: 0.5em;
+	border: 2px solid black;
+}
+
+#courseGroupingsDiv {
+	margin-bottom: 0.5em;
+}
+
+.divider {
+    width:0.7em;
+    height:auto;
+    display:inline-block;
+}
+
+.loginForm {
+	margin: 10px;
+	max-width: 15%;
+	text-align: center;
+}
+
+.registerForm {
+	list-style-type: none;
+}
+
+#registerButton {
+	margin-left: 10px;
+}
+
+#add-course {
+	margin-left: 10px;
+}
+
+#cancelButton, #submitRegistration {
+	margin: 5px;
+}
+
+
+/* Header */
+header {
+	margin:0;
+	background-color: #e1e1e1;
+	width: 100%;
+	position: relative;
+}
+
+img#logo {
+	position: absolute;
+	top:8px;
+	left:8px;
+	height: 70%;
+}
+
+img#profilePic {
+	height: 70%;
+	width: 30%;
+	margin: 5px;
+	border-radius: 5px;
+	right: 0px;
+	margin-right: 9px;
+}
+
+#userInfo {
+	text-align: right;
+	margin: 0;
+	margin-right: 9px;
+}
+
+#picInfoContainer {
+	position: absolute;
+	height: 125px;
+	width: 300px;
+	top: 0px;
+	right: 0px;
+	padding: 3px;
+	padding-right: 0;
+}
+
+#headerContent {
+	position: relative;
+	height: 150px;
+	width: 100%;
+}
+
+li#inline{
+	display: inline;
+}
+
+ul#menuContainer{
+	color: white;
+	display: inline-block;
+	border:3px solid black;
+	width: 100%;
+	/*background-color: #2597FC;*/
+	background-color: 054279;
+	margin: 0;
+	position: absolute;
+	bottom: 0;
+	left:0;
+	height: 20px;
+	overflow: hidden;
+	padding: 0;
+	border-right: none;
+	border-left: none;
+}
+
+.navBarClass > a {
+	color: white;
+	text-decoration: none;
+	padding: 5px;
+}
+
+.navBarClass > a:hover {
+	color: black;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+#logout {
+	color: blue;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+#logout:hover {
+	color: grey;
+	text-decoration: none;
+	cursor: pointer;
+}
+
+/* BODY */
+body {
+	margin: 0;
+	background-color: #f9f9f9;
+}
+
+/* STudent CSS */
+ul#classContainer{
+	list-style-type: none;
+	display: inline-block;
+	padding: 1%;
+	border: 3px solid black;
+	width: 80%;
+	margin-right: 5%;
+	margin-left: 5%;
+	margin-top: 0;
+}
+
+ul#formContainer{
+	list-style-type: none;
+	display: inline-block;
+}
+
+
+button#add{
+	margin-left: 10px;
+}
+
+li#inline{
+	display: inline;
+}
+
+ul#box{
+	list-style-type: none;
+	display: inline-block;
+	padding-left: 1%;
+	margin-right: 5%;
+	margin-left: 5%;
+	margin-bottom: 0;
+}
+
+textarea#textArea
+{
+	width:100%;
+}

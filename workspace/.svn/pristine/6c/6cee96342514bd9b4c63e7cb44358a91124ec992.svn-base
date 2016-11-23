@@ -1,0 +1,78 @@
+package com.turingpoint.dbmodel.db.mapping;
+
+import java.io.Serializable;
+import java.util.List;
+
+import javax.persistence.Column;
+import javax.persistence.Embeddable;
+import javax.persistence.EmbeddedId;
+import javax.persistence.Entity;
+import javax.persistence.FetchType;
+import javax.persistence.Id;
+import javax.persistence.IdClass;
+import javax.persistence.JoinColumn;
+import javax.persistence.OneToOne;
+import javax.persistence.Table;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.criterion.Restrictions;
+import org.pojomatic.Pojomatic;
+import org.pojomatic.annotations.AutoProperty;
+
+@Entity
+@Table
+@AutoProperty
+public class ActiveQuestion extends HibernateUtil {
+
+	@EmbeddedId
+	private ActiveQuestionId activeQuestionId;
+
+	public void setActiveQuestionId(Long courseId, Long questionId) {
+		this.activeQuestionId = new ActiveQuestionId();
+		this.activeQuestionId.setClassId(courseId);
+		this.activeQuestionId.setQuestionId(questionId);
+	}
+
+	public static ActiveQuestion getActiveQuestion(Long courseId, Long questionId) {
+		Session session = null;
+		try {
+			session = getSession();
+			Criteria criteria = HibernateUtil.getCriteria(session, ActiveQuestion.class);
+			criteria.add(Restrictions.eq("activeQuestionId.classId", courseId));
+			criteria.add(Restrictions.eq("activeQuestionId.questionId", questionId));
+			return (ActiveQuestion) criteria.uniqueResult();
+		} finally {
+			session.close();
+		}
+	}
+
+	public ActiveQuestion save() {
+		HibernateUtil.save(this);
+		return this;
+	}
+
+	public void delete() {
+		HibernateUtil.delete(this);
+	}
+	
+	public ActiveQuestion update() {
+		HibernateUtil.performAction(DBAction.UPDATE, this);
+		return this;
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		return Pojomatic.equals(this, o);
+	}
+
+	@Override
+	public int hashCode() {
+		return Pojomatic.hashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return Pojomatic.toString(this);
+	}
+}

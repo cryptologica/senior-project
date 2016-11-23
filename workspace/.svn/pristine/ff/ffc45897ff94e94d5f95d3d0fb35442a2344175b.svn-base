@@ -1,0 +1,94 @@
+$(document).ready(function() {
+	
+	var role = sessionStorage.getItem('role');
+	var courseID = sessionStorage.getItem('courseID');
+	
+	if(courseID == null)
+		loadPage("login");
+	
+
+	
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/courses/" + courseID + "/lectures";
+
+
+	// Ask the server for a list of courses available for current user
+	$.getJSON(url, lectureListCallback);
+});
+
+/**
+ * Called after header is injected
+ */
+function pageLoaded(){
+	//loadMenu("manage");
+}
+
+/**
+ * Instructor - Manage lecture button pressed
+ */
+$(document).on('click', '.lectureBtn', function(event) {
+	var lectureID = ($(event.currentTarget).parent()).attr('id');
+	var lectureName = ($(event.currentTarget).parent()).text();
+	sessionStorage.setItem("lectureID", lectureID);
+	sessionStorage.setItem("lectureName", lectureName);
+	loadPage("results");
+});
+
+
+
+function lectureListCallback(data, status){
+	if(status == "success"){
+		var lectures = data.Lectures;
+		
+		// Store sessions for future use
+		localStorage.setItem("lectures", JSON.stringify(lectures));
+		
+		// Check if there are no lectures
+		if(lectures.length == 0){
+			var noLecturesHTML = 
+				'<div class="jumbotron" id="noLectures">'+
+					'<h1>No Lectures For This Course</h1>'+
+					'<p>Create one by clicking the button below.</p>'+
+				'</div>';
+			$("#lectures").append(noLecturesHTML);
+			return;
+		}
+		
+		// Generate and add the HTML to the page
+		var lecturesHTML = 
+						 '<!-- /.row -->'+
+						 '<div class="row" id="pollsBtns">';
+		
+		// Extract info for each course
+		for (var i = 0; i < lectures.length; i++) {
+			var lectureID = lectures[i].lectureId;
+			var lectureName = lectures[i].name;
+			
+			lecturesHTML += getPollButtonHTML(lectureID, lectureName);
+			
+			/*
+			lecturesHTML +=
+            "<div class=\"col-lg-3 col-md-4 col-xs-12 thumb\" id=\"" + lectureID + "\">"+
+                "<a class=\"thumbnail lectureBtn\" href=\"#\">"+
+                    "<h1 class=\"text-center\">"+lectureName  + "</h1>"+
+                "</a>"+
+            "</div>";
+            */
+		}
+		lecturesHTML += '</div>';		// Close off outer row
+		$("#lectures").append(lecturesHTML);
+	}
+}
+
+/**
+ * Get the HTML text for the button used to manage a poll
+ */
+function getPollButtonHTML(lectureID, lectureName){
+	var returnString =
+        '<div class="col-lg-3 col-md-4 col-xs-12 thumb" id="' + lectureID + '">'+
+            '<a class="thumbnail lectureBtn" href="#">'+
+                '<h1 class="text-center">' +lectureName  + '</h1>'+
+            '</a>'+
+        '</div>';
+	return returnString;
+}

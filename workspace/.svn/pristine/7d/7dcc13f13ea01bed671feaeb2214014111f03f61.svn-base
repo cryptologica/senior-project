@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+ <!--  Start - Should be present on top of head on all pages -->
+    <script src="http://code.jquery.com/jquery-latest.min.js" type="text/javascript"></script>
+    
+    <!-- Main js used to inject content used throughout the site, and manage session vars -->
+    <script src="../js/main.js" type="text/javascript"></script>
+    
+    <!-- Favorite Icons -->
+    <link rel="icon" type="image/png" href="../img/favicon-32x32.png" sizes="32x32" />
+	<link rel="icon" type="image/png" href="../img/favicon-16x16.png" sizes="16x16" />
+
+ <!--  End - Should be present on top of head on all pages -->
+
+<script type="text/javascript" src="../js/quiz_student.js"></script>
+
+    <!-- Custom (Formerly Injected) -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="">
+    <meta name="author" content="">
+
+    <title>Turing Point - Clicker Replacement</title>
+
+    <!-- Bootstrap Core CSS -->
+    <link href="../bower_components/bootstrap/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- MetisMenu CSS -->
+    <link href="../bower_components/metisMenu/dist/metisMenu.min.css" rel="stylesheet">
+
+    <!-- Timeline CSS -->
+    <link href="../dist/css/timeline.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link href="../dist/css/sb-admin-2.css" rel="stylesheet">
+
+    <!-- Custom Fonts -->
+    <link href="../bower_components/font-awesome/css/font-awesome.min.css" rel="stylesheet" type="text/css">
+    
+    <!-- Our CSS -->
+    <link href="../css/style.css" rel="stylesheet" type="text/css">
+    
+    <!-- Bootstrap Core JavaScript -->
+    <script src="../bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+
+    <!-- Metis Menu Plugin JavaScript -->
+    <script src="../bower_components/metisMenu/dist/metisMenu.min.js"></script>
+
+    <!-- Custom Theme JavaScript -->
+    <script src="../dist/js/sb-admin-2.js"></script>
+
+</head>
+
+<body>
+<div id="header"></div>
+<div class="container" id="courses">
+    </div>
+
+<!-- sidebar: quizzes and their questions -->
+<!-- top div is the wrapper container -->
+<div class="container-fluid">
+     
+
+<!-- content of quiz page -->
+  
+  <div class ="row">
+  <div class="col-md-3">
+          <div class="panel-group" id="studentNav" >
+
+            <div class="panel panel-default">
+            <a data-toggle="collapse" data-parent="#accordion" href="#collapseOne">
+              <div class="panel-heading" style="background:#F8F8F8">
+                <h4 class="panel-title">
+                  <span class="glyphicon glyphicon-book">
+                    </span>Questions<span class="glyphicon glyphicon-menu-down" style="float:right"></span>
+                </h4>
+              </div>
+              </a>
+              <div id="collapseOne" class="panel-collapse collapse">
+                <ul class="list-group" id="qs" style="overflow-y: scroll; max-height: 200px;">
+
+                </ul>
+              </div>
+            </div>
+
+
+          </div>
+        </div>
+    <div class="col-md-8">
+      <h1 class = "page-header" id = "questionTitle"></h1>
+
+     <div class="row">
+            
+    
+    <div class="col-md-8">
+    <h3 id = "questionQuestion"></h3>
+      <div id = "questionContent">
+      </div>
+      <br>
+      <br>
+      <button type="button" id = "saveAnswer" class="btn btn-primary">Save Answer</button>
+      	<div class = "row">
+		<div class = "col-md-4" id="formError"></div>
+		
+	</div>
+  </div>
+  
+</div>
+    </div>
+    </div>
+
+
+<!-- end of wrapper -->
+</div>
+
+<div class="modal fade" data-backdrop="static"  id = "myModal" role="dialog">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title">Loading...</h4>
+      </div>
+      <div class="modal-body">
+        <div class="progress">
+        <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuenow="45" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+          <span class="sr-only">45% Complete</span>
+        </div>
+    </div>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+</html>

@@ -1,0 +1,559 @@
+package com.turingpoint.controller.courses;
+
+import java.io.InputStream;
+import java.util.Date;
+import java.util.List;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.GET;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import com.turingpoint.controller.ServerContext;
+import com.turingpoint.controller.ServerTypes;
+import com.turingpoint.dbmodel.db.dto.LectureStatus;
+import com.turingpoint.dbmodel.db.dto.RecentResults;
+import com.turingpoint.dbmodel.db.mapping.Course;
+import com.turingpoint.dbmodel.db.mapping.Lecture;
+import com.turingpoint.dbmodel.db.mapping.User;
+import com.turingpoint.dbmodel.db.persister.CoursePersister;
+import com.turingpoint.dbmodel.db.persister.LecturePersister;
+import com.turingpoint.dbmodel.db.persister.ResponsePersister;
+import com.turingpoint.dbmodel.db.persister.StudentPersister;
+import com.turingpoint.dbmodel.model.Role;
+
+@Path("/courses")
+@Produces(MediaType.APPLICATION_JSON)
+public class CourseServices {
+
+	ServerContext server = ServerContext.INSTANCE;
+	
+    @GET
+    public Response GetCourses() 
+    {
+    	
+    	JSONObject responseObject = new JSONObject();  	
+    	JSONArray courseList = new JSONArray();
+    	String msg= "";
+    	
+    	List<Object> courses;
+    	
+    	//Get course list
+    	try
+    	{
+    		courses = CoursePersister.getAllCoursesWithInstructorName();
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Error Getting all courses";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	for (int i=0; i < courses.size(); i++)
+    	{    		
+    		JSONObject course = new JSONObject();
+    		Object[] tempCourse = (Object[]) courses.get(i);
+    		course.put("courseId", tempCourse[0]);
+    		course.put("fName", tempCourse[1]);
+    		course.put("lName", tempCourse[2]);
+    		course.put("name", tempCourse[3]);
+    		course.put("description", tempCourse[4]);
+    		
+    		courseList.put(course);
+    	}
+    	
+    	responseObject.put("Courses", courseList);
+    	
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+	
+    
+    @POST
+    @Path("/create")
+    @Consumes(MediaType.APPLICATION_JSON)
+    //TODO: automatically associate instructor with the course they created, this currently isnt happening so a join has to be called after
+    public Response CreateNewCourse(InputStream inputJSON) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	
+    	String msg = "";
+    	
+    	long userID;
+    	String courseName;
+    	String description;
+    	Course createdCourse;
+    	
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Validate input has required fields
+    	try
+    	{
+	    	///JSON incoming should have told us course name and course description along iwth creating user
+	    	userID = inputObject.getLong("userId");
+	    	courseName = ServerTypes.escapeTags(inputObject.getString("name"));
+	    	description = ServerTypes.escapeTags(inputObject.getString("description"));
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Validate creation of the course
+    	try
+    	{
+    		createdCourse = CoursePersister.createCourse(courseName, description, userID);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to create requested course";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	return Response.status(200).entity(createdCourse).build();
+    }
+    
+    @POST
+    @Path("/{courseID}/join")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response JoinCourse(InputStream inputJSON,@PathParam("courseID") Long courseID) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	
+    	//declare
+    	long userID;
+    	Course joinedCourse;
+    	
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Validate user id exists
+    	try
+    	{
+    		userID = inputObject.getLong("userId");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Attempt course join
+    	try
+    	{
+    		joinedCourse = CoursePersister.addStudentToCourse(courseID, userID);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to join requested course";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	return Response.status(200).entity(joinedCourse).build();
+    }
+    
+    @GET
+    @Path("/{courseID}/lectures")
+    public Response GetCourseLectures(@PathParam("courseID") Long courseID) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	JSONArray lectureList = new JSONArray();
+    	
+    	//Declare
+    	List<Lecture> lectures;
+    	
+    	//Retreive
+    	try
+    	{
+    		lectures = LecturePersister.getLecturesForCourse(courseID);	
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to get lectures for courseID: "+ courseID;
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	//ITerate and parse
+    	for(Lecture l : lectures)
+    	{
+    		JSONObject course = new JSONObject();
+    		course.put("lectureId",l.getLectureId());
+    		course.put("name",l.getName());
+    		course.put("publishDate", l.getDatePublished());
+    		
+    		lectureList.put(course);
+    	}
+    	
+    	//Responsd
+    	responseObject.put("Lectures", lectureList);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    	
+    }
+    
+    /**
+     * Get the timestamp of the last time a course's question status was last updated.
+     * Considered an update when a question is started / stopped, or updated
+     * @param courseId
+     * @return
+     */
+    @GET
+    @Path("/{courseID}/lastUpdate")
+    public Response GetLastUpdate(@PathParam("courseID") Long courseId) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	Date lastUpdate = null;
+    	try{
+        	lastUpdate = Course.getLastUpdate(courseId);
+        	if(lastUpdate == null)
+        		throw new NullPointerException();
+    	} catch(Exception e){
+    		String msg = "Unable to get last update timestamp for courseID: "+ courseId;
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	responseObject.put("lastUpdate",lastUpdate);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @GET
+    @Path("/{courseID}/status")
+    public Response GetCourseStatus(@PathParam("courseID") Long courseID) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	JSONArray questionList = new JSONArray();
+    	
+    	//Declare
+    	List<LectureStatus> lectureQuestions;
+    	Course course = null;
+    	
+    	//try to get questions
+    	try
+    	{
+    		lectureQuestions = LecturePersister.getActiveQuestions(courseID);
+    		course = Course.getCourse(courseID);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to get active questions for courseID: "+ courseID;
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Iterate
+    	for(LectureStatus l : lectureQuestions)
+    	{
+    		JSONObject question = new JSONObject();
+    		
+    		question.put("questionId",l.getQuestionId());
+    		question.put("title",l.getTitle());
+    		question.put("version",l.getVersion());
+    		
+    		questionList.put(question);
+    	}
+    	
+    	//Respond
+    	responseObject.put("QS", questionList);
+    	responseObject.put("lastUpdate", course.getLastUpdate());
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+	@GET
+	@Path("/{courseID}/students")
+	public Response getStudentsInClass(@PathParam("courseID") Long courseId) 
+	{
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	JSONArray userList = new JSONArray();
+    	
+    	//Declare
+		List<Object[]> list;
+		
+		//Retreive
+		try {
+			list = StudentPersister.getCourseStudents(courseId);
+		}
+		catch(Exception e)
+    	{
+    		msg = "Unable to get students for courseID: "+ courseId;
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+
+    	
+    	//Iterate
+    	for(Object[] o : list)
+    	{
+    		JSONObject user = new JSONObject();
+    		
+    		//Integer id = ;
+    		//String fname = ;
+    		//String lname = ;
+    		user.put("userId",(Integer)o[0]);
+    		user.put("fName",(String)o[1]);
+    		user.put("lName",(String)o[2]);
+    		user.put("studentId", (String)o[3]);
+    		
+    		userList.put(user);
+    	}
+    	
+    	//Respond
+    	responseObject.put("Students", userList);
+		return Response.status(200).entity(responseObject.toString()).build();
+	}
+	
+	
+	@PUT
+	@Path("/{courseID}/update")
+	public Response updateCourse(@PathParam("courseID") Long courseId, InputStream inputJSON) 
+	{
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	String courseName, description;
+
+    	//Validate input has required fields
+    	try
+    	{
+	    	courseName = ServerTypes.escapeTags(inputObject.getString("name"));
+	    	description = ServerTypes.escapeTags(inputObject.getString("description"));
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputObject.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+
+		try {
+			CoursePersister.updateCourse(courseId, courseName, description);
+		}
+		catch(Exception e)
+    	{
+    		msg = "Unable to update course details for course with id "+ courseId;
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Respond
+    	responseObject.put("courseId", courseId);
+    	responseObject.put("name", courseName);
+    	responseObject.put("description", description);
+		return Response.status(200).entity(responseObject.toString()).build();
+	}
+    
+    @DELETE
+    @Path("/{courseID}/delete")
+    public Response DeleteCourse(InputStream inputJSON,@PathParam("courseID") Long courseId)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		String msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("QuestionServices | 394 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+
+    	long userID;
+    	try
+    	{
+        	userID = inputObject.getLong("userId");
+    	}
+    	catch(Exception e)
+    	{
+    		String msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	User user = User.getUser(userID);
+    	if(!user.getRole().equals(Role.INSTRUCTOR)){
+    		return Response.status(401).entity("Not Authorized").build();
+    	}
+    	
+    	Course course = new Course();
+    	course.setClassId(courseId);
+    	course.delete();
+    	
+    	responseObject.put("courseId", courseId);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+	@GET
+	@Path("/{courseID}/studentcount")
+	public Response getNumberOfStudents(@PathParam("courseID") Long courseID)
+	{
+		if(courseID == null)
+			return Response.status(400).entity("Provided course id is null.").build();
+		Long count = null;
+		try{
+		 count = StudentPersister.getNumberOfStudents(courseID);
+		} catch (Exception e){
+			JSONObject responseObject = new JSONObject();
+			responseObject.put("msg", "Unable to fetch the count of students for course id " + courseID + ".");
+			return Response.status(400).entity(responseObject.toString()).build();
+		}
+		if(count != null)
+		{
+			JSONObject responseObject = new JSONObject();
+			responseObject.put("count", count.longValue());
+			return Response.status(200).entity(responseObject.toString()).build();
+		} else
+			return Response.status(400).entity("Count returned is null.").build();
+	}
+	
+	@GET
+	@Path("/{courseID}/recentstudents")
+	public Response getRecentStudents(@PathParam("courseID") Long courseID)
+	{
+		if(courseID == null)
+			return Response.status(400).entity("Provided course id is null.").build();
+		List<User> recentStudents;
+		try{
+		 recentStudents = StudentPersister.getRecentlyJoinedStudentsForCourse(courseID);
+		} catch (Exception e){
+			JSONObject responseObject = new JSONObject();
+			responseObject.put("msg", "Unable to get the recent students for course id " + courseID + ".");
+			return Response.status(400).entity(responseObject.toString()).build();
+		}
+		if(recentStudents != null)
+		{
+			JSONObject responseObject = new JSONObject();
+			JSONArray recentStudentList = new JSONArray();
+			for(User user : recentStudents){
+				JSONObject recentStudent = new JSONObject();
+				recentStudent.put("fname", user.getfName());
+				recentStudent.put("lname", user.getlName());
+				recentStudent.put("userId", user.getUserId());
+	    		recentStudentList.put(recentStudent);
+			}
+			responseObject.put("recentStudents", recentStudentList);
+			return Response.status(200).entity(responseObject.toString()).build();
+		} else
+			return Response.status(400).entity("Recent studetns list is null.").build();
+	}
+	
+	@GET
+	@Path("/{courseID}/recentresults")
+	public Response getRecentResults(@PathParam("courseID") Long courseID)
+	{
+		if(courseID == null)
+			return Response.status(400).entity("Provided course id is null.").build();
+		List<RecentResults> recentResults;
+		try{
+		 recentResults = ResponsePersister.getMostRecentResponses(courseID);
+		} catch (Exception e){
+			JSONObject responseObject = new JSONObject();
+			responseObject.put("msg", "Unable to get the recent results for course id " + courseID + ".");
+			return Response.status(400).entity(responseObject.toString()).build();
+		}
+		if(recentResults != null)
+		{
+			JSONObject responseObject = new JSONObject();
+			JSONArray recentResultList = new JSONArray();
+			for(RecentResults result : recentResults){
+				JSONObject recentResult = new JSONObject();
+				recentResult.put("name", result.getName());
+				recentResult.put("date", result.getDate());
+				recentResult.put("lectureId", result.getLectureId());
+	    		recentResultList.put(recentResult);
+			}
+			responseObject.put("recentResults", recentResultList);
+			return Response.status(200).entity(responseObject.toString()).build();
+		} else
+			return Response.status(400).entity("Recent results list is null.").build();
+	}
+	
+	@GET
+	@Path("/{courseID}/recentlectures")
+	public Response getRecentLectures(@PathParam("courseID") Long courseID)
+	{
+		if(courseID == null)
+			return Response.status(400).entity("Provided course id is null.").build();
+		List<Lecture> recentLectures;
+		try{
+		 recentLectures = LecturePersister.getRecentLectures(courseID);
+		} catch (Exception e){
+			JSONObject responseObject = new JSONObject();
+			responseObject.put("msg", "Unable to get the recent results for course id " + courseID + ".");
+			return Response.status(400).entity(responseObject.toString()).build();
+		}
+		if(recentLectures != null)
+		{
+			JSONObject responseObject = new JSONObject();
+			JSONArray recentLectureList = new JSONArray();
+			for(Lecture lecture : recentLectures){
+				JSONObject recentResult = new JSONObject();
+				recentResult.put("name", lecture.getName());
+				recentResult.put("created", lecture.getDateCreated());
+				recentResult.put("lectureId", lecture.getLectureId());
+				recentLectureList.put(recentResult);
+			}
+			responseObject.put("recentLectures", recentLectureList);
+			return Response.status(200).entity(responseObject.toString()).build();
+		} else
+			return Response.status(400).entity("Recent lectures list is null.").build();
+	}
+
+}

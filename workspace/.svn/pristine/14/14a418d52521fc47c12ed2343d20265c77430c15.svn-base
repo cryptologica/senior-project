@@ -1,0 +1,221 @@
+/**
+ * 
+ */
+
+//event handler for searching for a lecture
+$(document).on('click', '#searchButton', function(event)
+{
+	event.preventDefault();
+	
+	var courseID = sessionStorage.getItem("courseID");
+	baseURL = sessionStorage.getItem("baseURL");
+	$("#lectureGroups").empty();
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/courses/" + courseID + "/lectures",
+	    success: searchLecture,
+	    error: searchLecture
+	    });
+	
+
+});
+
+$(document).on('click', '#clearButton', function(event)
+		{
+			event.preventDefault();
+			$("#lectureGroups").empty();
+			$("#searchText").val("");
+		});
+
+$(document).on('click', '#question', function(event)
+		{
+			event.preventDefault();
+			var qid = $(this).attr("qid");
+			sessionStorage.setItem("currQID", qid);
+			var lectureID = sessionStorage.getItem("lectureID");
+			$.ajax({
+			    method : 'GET',
+			    ContentType: 'application/json', 
+			    url : baseURL +"/lecture/" + lectureID,
+			    success: viewQuestionsCallback,
+			    error: viewQuestionsCallback
+			    })
+		});
+
+$(document).on('click', '#lectureGroup', function(event)
+		{
+			event.preventDefault();
+			var lectureID = $(this).attr("lectureID");
+			sessionStorage.setItem("lectureID", lectureID);
+			var lectureTitle = $(this).attr("name");
+			sessionStorage.setItem("lectureTitle", lectureTitle);
+			console.log(lectureID);
+			$.ajax({
+			    method : 'GET',
+			    ContentType: 'application/json', 
+			    url : baseURL +"/lecture/" + lectureID,
+			    success: viewQuestionsCallback,
+			    error: viewQuestionsCallback
+			    });
+		});
+function searchLecture(result, error)
+{
+	if(error == "success")
+	{
+		//get text from search box
+		var text = document.getElementById("searchText").value.toLowerCase();
+		text = text.replace(/\s/g,'');
+		
+		var limit = 0;
+		
+		for(var i = 0; i< result.Lectures.length && limit < 10; i++)
+		{
+			var name = result.Lectures[i].name.toLowerCase();
+			name = name.replace(/\s/g,'');
+			if(name.indexOf(text) !== -1)
+			{
+				limit++;
+				var html = '<a class = "list-group-item" href="#" id="lectureGroup" lectureID = "'+result.Lectures[i].lectureId+'" name = "'+result.Lectures[i].name+'"><span class="glyphicon glyphicon-file"></span>'+result.Lectures[i].name+'</a>';
+				$("#lectureGroups").append(html);
+			}
+		}
+	}
+	else
+	{
+		//
+	}
+};
+
+//window.onload = initialize();
+$(document).ready(initialize());
+
+var baseURL;
+
+function initialize()
+{
+	var courseID = sessionStorage.getItem("courseID");
+	sessionStorage.setItem("currQID", null);
+	baseURL = sessionStorage.getItem("baseURL");
+
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/courses/" + courseID + "/lectures",
+	    success: getLecture,
+	    error: getLecture
+	   });
+};
+
+$(document).on('click', '#lectureGroup', function(event)
+		{
+			event.preventDefault();
+		});
+
+$(document).on('click', '#lecture', function(event)
+		{
+			event.preventDefault();
+			//var lectureID = $(this).attr("lectureID");
+			//sessionStorage.setItem("lectureID", lectureID);
+			//var lectureTitle = $(this).attr("name");
+			//sessionStorage.setItem("lectureTitle", lectureTitle);
+			var lectureID = sessionStorage.getItem("lectureID");
+			var lectureTitle = sessionStorage.getItem("lectureTitle");
+			console.log(lectureID);
+			$.ajax({
+			    method : 'GET',
+			    ContentType: 'application/json', 
+			    url : baseURL +"/lecture/" + lectureID,
+			    success: viewQuestionsCallback,
+			    error: viewQuestionsCallback
+			    })
+		});
+
+function viewQuestionsCallback(result, error)
+{
+	if(error == "success")
+		{
+			if(result.QS.length > 0)
+				{
+					loadPage("result_student");
+				}
+			else
+				{
+					console.log("no question in lecture");
+					//give error notice that lecture holds no questions
+				}
+		}
+	else
+		{
+			//if callback fails
+		}
+}
+
+function getLecture(result, error)
+{
+	if(error == "success")
+		{
+			console.log("working ");
+			console.log(result);
+			$("#calendar").fullCalendar({
+				editable:true,
+				height: "auto",
+				timezone:'local',
+				eventClick:function(calEvent, jsEvent, view)
+				{
+					var lectureID = $(calEvent).attr("lectureID");
+					sessionStorage.setItem("lectureID", lectureID);
+					sessionStorage.setItem("lectureTitle", $(calEvent).attr("title"));
+					$("#modalTitle").empty();
+					$("#modalTitle").append(calEvent.title);
+					$.ajax({
+					    method : 'GET',
+					    ContentType: 'application/json', 
+					    url : baseURL +"/lecture/" + lectureID,
+					    success: viewModalCallback,
+					    error: viewModalCallback
+					    })
+				}
+			
+				});
+			
+			for(var i = 0; i< result.Lectures.length; i++)
+				{
+					//var html = '<a class = "thumbnail col-md-4" href="#" id="lecture" lectureID = "'+result.Lectures[i].lectureId+'" name = "'+result.Lectures[i].name+'"style="margin: 20px"><h1 class = "text-center">'+result.Lectures[i].name+'</h1></a>';
+					//$("#lectureList").append(html);
+					var event = {title:result.Lectures[i].name, allDay:true, start:result.Lectures[i].publishDate,lectureID:result.Lectures[i].lectureId };
+					$('#calendar').fullCalendar('renderEvent', event, true);
+				}
+			
+			
+			
+		}
+	else
+		{
+			console.log("not working");
+		}
+};
+
+function viewModalCallback(result, error)
+{
+	if(error == "success"){
+		
+		var qs = result.QS;
+		$("#modalBody").empty();
+		
+		for(var i = 0; i < qs.length; i++)
+			{
+				$("#modalBody").append('<button type="button" id="question" qid="'+qs[i].questionId+'" class="btn btn-default" data-dismiss="modal" style="width:100%;"><span style="float:left">'+qs[i].title+'</span><span style="float:right">'+"Score : -/-"+'</span></button>');
+			}
+		
+		$("#modalFooter").empty();
+		$("#modalFooter").append('<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>');
+		$("#modalFooter").append('<button type="button" id="lecture" class="btn btn-primary" data-dismiss="modal">Enter</button>');
+		
+		$("#myModal").modal('show');
+	}
+	else
+		{
+		alert("error");
+		}
+}

@@ -1,0 +1,658 @@
+package com.turingpoint.controller.polling;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import com.turingpoint.controller.ServerContext;
+import com.turingpoint.dbmodel.db.dto.LectureStatus;
+import com.turingpoint.dbmodel.db.mapping.ActiveQuestion;
+import com.turingpoint.dbmodel.db.mapping.Lecture;
+import com.turingpoint.dbmodel.db.mapping.Question;
+import com.turingpoint.dbmodel.db.mapping.QuestionOption;
+import com.turingpoint.dbmodel.db.mapping.Response.ResponseId;
+import com.turingpoint.dbmodel.db.persister.LecturePersister;
+import com.turingpoint.dbmodel.db.persister.QuestionOptionPersister;
+import com.turingpoint.dbmodel.db.persister.QuestionPersister;
+import com.turingpoint.dbmodel.db.persister.ResponsePersister;
+import com.turingpoint.dbmodel.model.QuestionType;
+
+@Path("/results")
+@Produces(MediaType.APPLICATION_JSON)
+public class ResultsServices 
+{
+	ServerContext server = ServerContext.INSTANCE;
+	
+	@GET
+	@Path("/{questionID}")
+	public Response getLiveQuestionResults(@PathParam("questionID") Long questionID)
+	{
+		//get the cached responses for the question id
+		HashMap<com.turingpoint.dbmodel.db.mapping.Response.ResponseId,com.turingpoint.dbmodel.db.mapping.Response> responses = server.getCacheResponses(questionID);
+		if(responses != null)
+		{
+			//get the unique entries by name option, might want to do a different mapping later
+			HashMap<String, Integer> countMappings = new HashMap<String,Integer>();
+			
+			int totalQuestionResponses = responses.size();
+			int totalCorrectResponses = 0;
+			
+			for (Map.Entry<com.turingpoint.dbmodel.db.mapping.Response.ResponseId, com.turingpoint.dbmodel.db.mapping.Response> entry : responses.entrySet())
+			{
+				//if this response is a text response.... make that an option and add a count to that
+				String optionText = "";
+				
+				if(!entry.getValue().getTextResponse().equals(""))
+				{
+					optionText = entry.getValue().getTextResponse();
+					//decide if that is right
+					if( server.getIsCorrectResponse(questionID, 0L, optionText) )
+					{
+						totalCorrectResponses += 1;
+					}
+				}
+				else
+				{
+					Long optId = entry.getValue().getOptionId();
+					optionText = server.getOptionText(questionID, optId);
+					if(server.getIsCorrectResponse(questionID, optId, ""))
+					{
+						totalCorrectResponses += 1;
+					}
+				}
+				
+				
+				if(!countMappings.containsKey(optionText))
+				{
+					countMappings.put(optionText, 0);
+				}
+				
+				countMappings.put(optionText, countMappings.get(optionText) + 1);
+			}
+			
+			JSONObject responseObject = new JSONObject();
+			JSONArray responseArray = new JSONArray();
+			
+			responseObject.put("count", totalQuestionResponses);
+			responseObject.put("correct", totalCorrectResponses);
+			
+			for (Map.Entry<String, Integer> entry : countMappings.entrySet())
+			{
+				JSONObject obj = new JSONObject();
+				
+				obj.put(entry.getKey(), entry.getValue());
+				
+				responseArray.put(obj);
+			}
+			
+			responseObject.put("responses", responseArray);
+			return Response.status(200).entity(responseObject.toString()).build();
+		}
+		
+		JSONObject responseObject = new JSONObject();
+		responseObject.put("msg", "No dice");
+		return Response.status(400).entity(responseObject.toString()).build();
+		//return null;
+	}
+	
+	@GET
+	@Path("/{classID}/class")
+	public Response getClassQuestionResults(@PathParam("classID") Long classID)
+	{
+		
+		List<Lecture> lectures = LecturePersister.getLecturesForCourse(classID);
+		
+		//iterate o
+		for(Lecture L : lectures)
+		{
+			
+		}
+		
+		
+		JSONObject responseObject = new JSONObject();
+		responseObject.put("msg", "No dice");
+		return Response.status(400).entity(responseObject.toString()).build();
+	}
+	
+
+
+	/*
+	@GET
+	@Path("/{questionID}/question")
+	public Response getQuestionResults(@PathParam("questionID") Long questionID)
+	{
+		
+		Question questionInQuestion = Question.getQuestion(questionID);
+		List<com.turingpoint.dbmodel.db.mapping.Response> responses = ResponsePersister.getQuestionResponses(questionID);
+
+		JSONObject responseObject = new JSONObject();
+		JSONArray responseArray = new JSONArray();
+		
+		//Get the name of the question we are asking about
+		responseObject.put("title", questionInQuestion.getTitle());
+		responseObject.put("value", 1);
+		
+		//Depending on the question type....
+		if(questionInQuestion.getType() == QuestionType.MULTIPLE_CHOICE)
+		{
+			
+			//Count of what is selected, multuple choice
+			HashMap<Long, Integer> countMappings = new HashMap<Long,Integer>();
+			HashMap<Long, String> responseTextMappings = new HashMap<Long,String>();
+			HashMap<Long, Boolean> corectnessMappings = new HashMap<Long,Boolean>();
+			List<QuestionOption> options = QuestionOptionPersister.getQuestionOptions(questionID);
+			
+			QuestionOption option = null;
+			//iterate over all recorded responses to this question
+			for(com.turingpoint.dbmodel.db.mapping.Response R : responses)
+			{
+				//Get the option
+				//option = QuestionOption.getQuestionOption(R.getOptionId());
+				for(QuestionOption O : options)
+				{
+					if(R.getOptionId() == O.getOptionId())
+					{
+						option = O;
+						break;
+					}
+				}
+				
+				if(!countMappings.containsKey(option.getOptionId()))
+				{
+					countMappings.put(option.getOptionId(), 0);
+					responseTextMappings.put(option.getOptionId(), option.getName());
+					corectnessMappings.put(option.getOptionId(), option.getIsCorrect());
+				}
+				
+				//Get the mappings for count
+				countMappings.put(option.getOptionId(), (countMappings.get(option.getOptionId()) + 1) );	
+			}
+			
+			//put responses together into a bundle
+			for (Map.Entry<Long, Integer> entry : countMappings.entrySet())
+			{
+			
+				JSONObject obj = new JSONObject();
+				
+				Long key = entry.getKey();
+				
+				obj.put("id",key);
+				obj.put("count",entry.getValue());
+				obj.put("name",responseTextMappings.get(key));
+				obj.put("correct",corectnessMappings.get(key));
+				
+				responseArray.put(obj);
+			}
+			
+			responseObject.put("results", responseArray);
+		}
+		else if (questionInQuestion.getType() == QuestionType.FILL_IN_BLANK)
+		{
+			//Count of what is selected, multuple choice
+			HashMap<String, Integer> countMappings = new HashMap<String,Integer>();
+			HashMap<String, Boolean> corectnessMappings = new HashMap<String,Boolean>();
+			
+			QuestionOption option = QuestionOptionPersister.getQuestionOptions(questionID).get(0);
+			boolean correct = false;
+
+			String answerText = "";
+			//iterate over all recorded responses to this question
+			for(com.turingpoint.dbmodel.db.mapping.Response R : responses)
+			{
+				
+					answerText = R.getTextResponse().toLowerCase();
+					if(answerText.equals(option.getAnswer().toLowerCase()))
+					{
+						correct = true;
+					}
+					else
+						correct = false;
+					
+					if(!countMappings.containsKey(answerText))
+					{
+						countMappings.put(answerText, 0);
+						corectnessMappings.put(answerText, false);
+					}
+					
+					countMappings.put(answerText, (countMappings.get(answerText) + 1) );
+					corectnessMappings.put(answerText, correct);
+										
+			}
+			
+			//put responses together into a bundle
+			for (Map.Entry<String, Integer> entry : countMappings.entrySet())
+			{
+			
+				JSONObject obj = new JSONObject();
+				
+				String textKey = entry.getKey();
+				
+				obj.put("id",option.getOptionId());
+				obj.put("count",entry.getValue());
+				obj.put("name",textKey);
+				obj.put("correct",corectnessMappings.get(textKey));
+				
+				responseArray.put(obj);
+			}
+			
+			responseObject.put("results", responseArray);
+		}
+		
+		//responseObject.put("msg", "No dice");
+		return Response.status(200).entity(responseObject.toString()).build();
+	}*/
+	
+	private JSONObject buildQuestionResults(Long questionID, Long userID)
+	{
+		Question questionInQuestion = Question.getQuestion(questionID);
+		List<com.turingpoint.dbmodel.db.mapping.Response> responses;
+	
+		//Filter the responses if there is a valid userID supplied
+		if(userID == null)
+		{
+			responses = ResponsePersister.getQuestionResponses(questionID);
+		}
+		else
+		{
+			List<com.turingpoint.dbmodel.db.mapping.Response> preScreenedresponses = ResponsePersister.getQuestionResponses(questionID);
+			responses = new ArrayList<com.turingpoint.dbmodel.db.mapping.Response>();	
+		
+			//filter out responses not for the particular student
+			for(com.turingpoint.dbmodel.db.mapping.Response R : preScreenedresponses)
+			{
+				ResponseId rid = R.getResponseId();
+				if(rid.getUserId() == userID)
+					responses.add(R);
+			}
+
+		}
+		
+		JSONObject responseObject = new JSONObject();
+		JSONArray responseArray = new JSONArray();
+		
+		//Get the name of the question we are asking about
+		responseObject.put("title", questionInQuestion.getTitle());
+		responseObject.put("value", 1);
+		responseObject.put("qID", questionID);
+		
+		//Depending on the question type....
+		if(questionInQuestion.getType() == QuestionType.MULTIPLE_CHOICE)
+		{
+			
+			//Count of what is selected, multuple choice
+			HashMap<Long, Integer> countMappings = new HashMap<Long,Integer>();
+			HashMap<Long, String> responseTextMappings = new HashMap<Long,String>();
+			HashMap<Long, Boolean> corectnessMappings = new HashMap<Long,Boolean>();
+			List<QuestionOption> options = QuestionOptionPersister.getQuestionOptions(questionID);
+	
+			//Preload the options
+			for(QuestionOption O : options)
+			{
+				if(!countMappings.containsKey(O.getOptionId()))
+				{
+					countMappings.put(O.getOptionId(), 0);
+					responseTextMappings.put(O.getOptionId(), O.getName());
+					corectnessMappings.put(O.getOptionId(), O.getIsCorrect());
+				}
+			}
+			
+			QuestionOption option = null;
+			//iterate over all recorded responses to this question
+			for(com.turingpoint.dbmodel.db.mapping.Response R : responses)
+			{
+				Long selectedOption = R.getOptionId();
+
+				//Get the mappings for count
+				countMappings.put(selectedOption, (countMappings.get(selectedOption) + 1) );	
+			}
+			
+			//put responses together into a bundle
+			for (Map.Entry<Long, Integer> entry : countMappings.entrySet())
+			{
+			
+				JSONObject obj = new JSONObject();
+				
+				Long key = entry.getKey();
+				
+				obj.put("id",key);
+				obj.put("count",entry.getValue());
+				obj.put("name",responseTextMappings.get(key));
+				obj.put("correct",corectnessMappings.get(key));
+				
+				responseArray.put(obj);
+			}
+			
+			responseObject.put("results", responseArray);
+		}
+		else if (questionInQuestion.getType() == QuestionType.FILL_IN_BLANK)
+		{
+			//Count of what is selected, multuple choice
+			HashMap<String, Integer> countMappings = new HashMap<String,Integer>();
+			HashMap<String, Boolean> corectnessMappings = new HashMap<String,Boolean>();
+			
+			QuestionOption option = QuestionOptionPersister.getQuestionOptions(questionID).get(0);
+			boolean correct = false;
+
+			String answerText = "";
+			//iterate over all recorded responses to this question
+			for(com.turingpoint.dbmodel.db.mapping.Response R : responses)
+			{
+				
+					answerText = R.getTextResponse().toLowerCase();
+					if(answerText.equals(option.getAnswer().toLowerCase()))
+					{
+						correct = true;
+					}
+					else
+						correct = false;
+					
+					if(!countMappings.containsKey(answerText))
+					{
+						countMappings.put(answerText, 0);
+						corectnessMappings.put(answerText, false);
+					}
+					
+					countMappings.put(answerText, (countMappings.get(answerText) + 1) );
+					corectnessMappings.put(answerText, correct);
+										
+			}
+			
+			//put responses together into a bundle
+			for (Map.Entry<String, Integer> entry : countMappings.entrySet())
+			{
+			
+				JSONObject obj = new JSONObject();
+				
+				String textKey = entry.getKey();
+				
+				obj.put("id",option.getOptionId());
+				obj.put("count",entry.getValue());
+				obj.put("name",textKey);
+				obj.put("correct",corectnessMappings.get(textKey));
+				
+				responseArray.put(obj);
+			}
+			
+			responseObject.put("results", responseArray);
+		}
+		else if(questionInQuestion.getType() == QuestionType.MULTIPLE_ANSWER)
+		{
+			
+			//Count of what is selected, multuple choice
+			HashMap<Long, Integer> countMappings = new HashMap<Long,Integer>();
+			HashMap<Long, String> responseTextMappings = new HashMap<Long,String>();
+			HashMap<Long, Boolean> corectnessMappings = new HashMap<Long,Boolean>();
+			List<QuestionOption> options = QuestionOptionPersister.getQuestionOptions(questionID);
+			int numberOfCorrectAnswers = 0;
+	
+			//Preload the options
+			for(QuestionOption O : options)
+			{
+				if(!countMappings.containsKey(O.getOptionId()))
+				{
+					countMappings.put(O.getOptionId(), 0);
+					responseTextMappings.put(O.getOptionId(), O.getName());
+					corectnessMappings.put(O.getOptionId(), O.getIsCorrect());
+					if(O.getIsCorrect())
+						numberOfCorrectAnswers++;
+				}
+			}
+			
+			QuestionOption option = null;
+			//iterate over all recorded responses to this question
+			for(com.turingpoint.dbmodel.db.mapping.Response R : responses)
+			{
+				//Get the list of responses from the new column
+				String responseList = R.getSelectedAnswers();
+				
+				String[] responsesBrokenUp = responseList.split(",");
+				for (String S : responsesBrokenUp)
+				{
+					//get the option id represented by this text
+					Long selectedOption = Long.parseLong(S);
+					
+					//Get the mappings for count
+					countMappings.put(selectedOption, (countMappings.get(selectedOption) + 1) );	
+				}
+
+			}
+			
+			//put responses together into a bundle
+			for (Map.Entry<Long, Integer> entry : countMappings.entrySet())
+			{
+			
+				JSONObject obj = new JSONObject();
+				
+				Long key = entry.getKey();
+				
+				obj.put("id",key);
+				obj.put("count",entry.getValue());
+				obj.put("name",responseTextMappings.get(key));
+				obj.put("correct",corectnessMappings.get(key));
+				
+				responseArray.put(obj);
+			}
+			
+			responseObject.put("value", numberOfCorrectAnswers);
+			responseObject.put("results", responseArray);
+		}
+
+		return responseObject;
+	}
+	
+	@GET
+	@Path("/{lectureID}/lecture")
+	public Response getLectureQuestionResults(@PathParam("lectureID") Long lectureID)
+	{
+		List<LectureStatus> lectureStatus = LecturePersister.getQuestionsForLecture(lectureID);
+		JSONObject responseObject = new JSONObject();
+		JSONArray responseArray = new JSONArray();
+		
+		//put responses together into a bundle
+		for (LectureStatus L : lectureStatus)
+		{
+			//get results for this question
+			JSONObject obj =  buildQuestionResults(L.getQuestionId(), null);
+			
+			responseArray.put(obj);
+		}
+		
+		responseObject.put("lectureResults", responseArray);
+		
+		return Response.status(200).entity(responseObject.toString()).build();
+	}
+	
+	@GET
+	@Path("/{lectureID}/lecture/{userID}")
+	public Response getLectureQuestionResults(@PathParam("lectureID") Long lectureID,@PathParam("userID") Long userID)
+	{
+		List<LectureStatus> lectureStatus = LecturePersister.getQuestionsForLecture(lectureID);
+		JSONObject responseObject = new JSONObject();
+		JSONArray responseArray = new JSONArray();
+		
+		//put responses together into a bundle
+		for (LectureStatus L : lectureStatus)
+		{
+			//get results for this question
+			JSONObject obj =  buildQuestionResults(L.getQuestionId(), userID);
+			
+			responseArray.put(obj);
+		}
+		
+		responseObject.put("lectureResults", responseArray);
+		
+		return Response.status(200).entity(responseObject.toString()).build();
+	}
+	
+	@GET
+	@Path("/{questionID}/question")
+	public Response getQuestionResults(@PathParam("questionID") Long questionID)
+	{
+		JSONObject responseObject = buildQuestionResults(questionID, null);
+		
+		//responseObject.put("msg", "No dice");
+		return Response.status(200).entity(responseObject.toString()).build();
+	}
+	
+	@GET
+	@Path("/{questionID}/question/{userID}")
+	public Response getQuestionResults(@PathParam("questionID") Long questionID,@PathParam("userID") Long userID)
+	{
+		JSONObject responseObject = buildQuestionResults(questionID, userID);
+		
+		//responseObject.put("msg", "No dice");
+		return Response.status(200).entity(responseObject.toString()).build();
+	}
+	
+	/*
+	@GET
+	@Path("/{questionID}/question/{userID}")
+	public Response getQuestionResults(@PathParam("questionID") Long questionID,@PathParam("userID") Long userID)
+	{
+		
+		Question questionInQuestion = Question.getQuestion(questionID);
+		List<com.turingpoint.dbmodel.db.mapping.Response> preScreenedresponses = ResponsePersister.getQuestionResponses(questionID);
+		List<com.turingpoint.dbmodel.db.mapping.Response> responses = new ArrayList<com.turingpoint.dbmodel.db.mapping.Response>();
+		
+		//filter out responses not for the particular student
+		for(com.turingpoint.dbmodel.db.mapping.Response R : preScreenedresponses)
+		{
+			ResponseId rid = R.getResponseId();
+			if(rid.getUserId() == userID)
+				responses.add(R);
+		}
+
+		JSONObject responseObject = new JSONObject();
+		JSONArray responseArray = new JSONArray();
+		
+		//Get the name of the question we are asking about
+		responseObject.put("title", questionInQuestion.getTitle());
+		responseObject.put("value", 1);
+		
+		//Depending on the question type....
+		if(questionInQuestion.getType() == QuestionType.MULTIPLE_CHOICE)
+		{
+			
+			//Count of what is selected, multuple choice
+			HashMap<Long, Integer> countMappings = new HashMap<Long,Integer>();
+			HashMap<Long, String> responseTextMappings = new HashMap<Long,String>();
+			HashMap<Long, Boolean> corectnessMappings = new HashMap<Long,Boolean>();
+			List<QuestionOption> options = QuestionOptionPersister.getQuestionOptions(questionID);
+			
+			QuestionOption option = null;
+			//iterate over all recorded responses to this question
+			for(com.turingpoint.dbmodel.db.mapping.Response R : responses)
+			{
+				//Get the option
+				//option = QuestionOption.getQuestionOption(R.getOptionId());
+				for(QuestionOption O : options)
+				{	
+					if(R.getOptionId().equals(O.getOptionId()))
+					{
+						option = O;
+						break;
+					}
+				}
+				if(!countMappings.containsKey(option.getOptionId()))
+				{
+					countMappings.put(option.getOptionId(), 0);
+					responseTextMappings.put(option.getOptionId(), option.getName());
+					corectnessMappings.put(option.getOptionId(), option.getIsCorrect());
+				}
+				
+				//Get the mappings for count
+				countMappings.put(option.getOptionId(), (countMappings.get(option.getOptionId()) + 1) );	
+			}
+			
+			//put responses together into a bundle
+			for (Map.Entry<Long, Integer> entry : countMappings.entrySet())
+			{
+			
+				JSONObject obj = new JSONObject();
+				
+				Long key = entry.getKey();
+				
+				obj.put("id",key);
+				obj.put("count",entry.getValue());
+				obj.put("name",responseTextMappings.get(key));
+				obj.put("correct",corectnessMappings.get(key));
+				
+				responseArray.put(obj);
+			}
+			
+			responseObject.put("results", responseArray);
+		}
+		else if (questionInQuestion.getType() == QuestionType.FILL_IN_BLANK)
+		{
+			//Count of what is selected, multuple choice
+			HashMap<String, Integer> countMappings = new HashMap<String,Integer>();
+			HashMap<String, Boolean> corectnessMappings = new HashMap<String,Boolean>();
+			
+			QuestionOption option = QuestionOptionPersister.getQuestionOptions(questionID).get(0);
+			boolean correct = false;
+
+			String answerText = "";
+			//iterate over all recorded responses to this question
+			for(com.turingpoint.dbmodel.db.mapping.Response R : responses)
+			{
+				
+					answerText = R.getTextResponse().toLowerCase();
+					if(answerText.equals(option.getAnswer().toLowerCase()))
+					{
+						correct = true;
+					}
+					else
+						correct = false;
+					
+					if(!countMappings.containsKey(answerText))
+					{
+						countMappings.put(answerText, 0);
+						corectnessMappings.put(answerText, false);
+					}
+					
+					countMappings.put(answerText, (countMappings.get(answerText) + 1) );
+					corectnessMappings.put(answerText, correct);
+										
+			}
+			
+			//put responses together into a bundle
+			for (Map.Entry<String, Integer> entry : countMappings.entrySet())
+			{
+			
+				JSONObject obj = new JSONObject();
+				
+				String textKey = entry.getKey();
+				
+				obj.put("id",option.getOptionId());
+				obj.put("count",entry.getValue());
+				obj.put("name",textKey);
+				obj.put("correct",corectnessMappings.get(textKey));
+				
+				responseArray.put(obj);
+			}
+			
+			responseObject.put("results", responseArray);
+		}
+
+		
+		
+		//responseObject.put("msg", "No dice");
+		return Response.status(200).entity(responseObject.toString()).build();
+	}*/
+
+}

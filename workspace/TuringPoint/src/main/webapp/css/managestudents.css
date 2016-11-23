@@ -1,0 +1,19 @@
+div#studentList
+{
+	overflow-y: scroll;
+	overflow: auto;
+	max-height:800px;
+	border: thin solid lightgrey;
+}
+
+/* Amazing collapse stuff from this post */
+/* http://stackoverflow.com/questions/28086811/collapse-div-only-on-mobile-view-bootstrap-3 */
+
+div#studentList.in,
+div#studentList.collapsing {
+   display: block!important;
+}
+
+.studentButton {
+	outline: none;
+}

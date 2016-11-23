@@ -1,0 +1,584 @@
+
+//calls the initialize function when the page is loaded
+$(document).ready(initialize());
+
+/**
+ * Get the userid, courseid, lectureid, and baseURL
+ * Calls graphPrepCallback to prepare for graph setup
+ */
+function initialize()
+{
+	localStorage.removeItem("QS");	// Clear existing question set
+	sessionStorage.removeItem("questionID");	// Clear any existing active question
+	baseURL = sessionStorage.getItem("baseURL");
+	var lectureID = sessionStorage.getItem("lectureID");
+	var url = baseURL + "/results/" + lectureID +"/lecture";
+	$.getJSON(url, graphPrepCallback);
+};
+
+/*
+ * success : save teh result as a window variable
+ * failure : Alert message appears saying "problem has occurred"
+ */
+function graphPrepCallback(result, error)
+{
+	if(error=="success")
+		{
+			
+			window.lectureResults = result;
+			checkQuestionStatus();
+		}
+	else
+		{
+			alert("An unknown error has occurred.");
+		}
+}
+
+/**
+ * Fetches the full question list of a user's results
+ */
+function checkQuestionStatus(){
+	var lectureID = sessionStorage.getItem("lectureID");
+	var userID = sessionStorage.getItem("userID");
+	$.ajaxSetup({
+	    cache: false
+	});
+	$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/results/" + lectureID + "/lecture/" + userID,
+		    success: questionStatusCallback,
+		    error: questionStatusCallback
+		    });
+};
+
+/**
+ * Callback after getting the list of available questions
+ */
+function questionStatusCallback(result, status)
+{
+	$("#tags").append(buildTagWell("sm",""));
+	var LR = result.lectureResults;
+	if(status == "error")
+		LR = [];
+	if(status == "success" && LR.length > 0)
+	{			
+			var questionID = sessionStorage.getItem("questionID");
+			var questionList = [];
+			
+			$("#qs").empty();
+			
+			//open and close the accordian tab according to the screen size
+			resize(); 
+			
+			var index = -1;
+			
+			//grab the selected question from review page
+			var currQID = JSON.parse(sessionStorage.getItem("currQID"));
+			
+			// Append questions to the questions list
+			for(var i = 0; i < LR.length; i++)
+			{
+				if(LR[i] != null)
+					{
+						//grabs the first question that is published
+						if(index == -1)
+							{
+								index = i;
+							}
+						else if(currQID == LR[i].qID)
+							{
+								index = i;
+							}
+					//get the student's score
+					var studentScore = 0;
+					for(var j = 0; j < LR[i].results.length; j++)
+						{
+							for(var k = 0; k < LR[i].results[j].users.length; k++)
+								{
+									studentScore += LR[i].results[j].users[k].points;
+								}
+						}
+					
+					//add question to question list
+					var addHTML = '<a href="#" class="list-group-item" id="question" name = "'+LR[i].qID+'" version='+LR[i].value+'><span class="glyphicon glyphicon-file"></span>'+LR[i].title+'<div style="float:right">Score : '+studentScore+'/'+LR[i].value+'</div></a>';
+					$("#qs").append(addHTML);
+					questionList.push(LR[i].qID);
+					}
+				
+			}
+			
+				if(questionID == null){	// If there is no question selected before on review page
+					questionID = currQID; //get selected question
+					if(currQID == null)
+					{
+						questionID = LR[index].qID; //set default as first published question
+					}
+					
+					sessionStorage.setItem("currQID", questionID);
+					selectQuestionFromExistingData(questionID);
+					
+					var isGraphTab = JSON.parse(sessionStorage.getItem("isGraph"));
+					
+					//if the page was on the graph tab previously ( refresh of page)
+					if(isGraphTab)
+						$("#graphResult").click();
+					
+					sessionStorage.setItem("questionList", JSON.stringify(questionList));
+					sessionStorage.setItem("index", index);
+					
+					sessionStorage.setItem("questionID", questionID);
+					
+					//Get question detail
+					$.ajax({
+					    method : 'GET',
+					    ContentType: 'application/json', 
+					    url : baseURL +"/question/" + questionID,
+					    success: questionCallback,
+					    error: questionCallback
+					    });
+				}
+				else
+					{
+					var addHTML = '<div class="jumbotron"><div class="container"><h1>No Available Questions</h1>'
+						+ '<p>The instructor for this course did not "publish" any questions for the selected lecture.</p></div></div>';
+					$("#questionQuestion").empty();
+					$("#questionQuestion").append(addHTML);
+					$('#loadClassListSpinner').hide();
+					$('#loadGraphSpinner').hide();
+						$("#qs").append(addHTML);
+					}
+		
+		//get title of lecture and append it
+		var lectureTitle = sessionStorage.getItem("lectureTitle");
+		$("#lectureTitle").append(lectureTitle);
+		
+	}
+	else
+	{
+		//there was an error
+		type = -1;
+		alert("No published questions available.  Moving to review page.");
+		loadPage("review_student");
+	}
+};
+
+/**
+ * Get the question detail
+ * type 0 : multiple-choice
+ * type 1 : fill-in-the-blank
+ * type 2 : multiple-answer
+ * type 3 : numerical response
+ */
+function questionCallback(result, error)
+{
+	if(error == "success")
+	{
+		//empty previous content and hide content until all content been added
+		$("#QuestionTitle").empty();
+		$("#questionQuestion").empty();
+		$("#questionContent").empty();
+		$("#QuestionTitle").css("visibility","hidden");
+		$("#questionQuestion").css("visibility","hidden");
+		$("#questionContent").css("visibility","hidden");
+		$("#saveAnswer").css("visibility", "hidden");
+		
+		//get info from parameter
+		var content = result.content;
+		type = result.type;
+		var options = result.options;
+		sessionStorage.setItem("callbackResult", JSON.stringify(result));
+		var title = result.title;
+		version = result.version;
+		
+		//add the title and question of the question
+		var addHTML = title+'<h2 style = "float : right"></h2>';
+		$("#QuestionTitle").append(addHTML);
+		$("#questionQuestion").append(content);
+		
+		
+		
+		if(type == 0)
+		{
+			addHTML = '<div class="btn-group-vertical" id ="questionContent2" style="width:100%" data-toggle="buttons">';
+			$("#questionContent").append(addHTML);
+        
+			
+		}
+		else if(type == 1)
+		{
+			addHTML = '<h4 id = "answerIcon">Response</h4><textarea class = "form-control" disabled rows="4" style="width:100%; resize:none" id="textBox"></textarea>';
+			$("#questionContent").append(addHTML);
+			addHTML = '<h4>Correct Answer</h4><textarea class = "form-control" disabled rows="4" style="width:100%; resize:none" id="textAnswer"></textarea>';
+			$("#questionContent").append(addHTML);
+		}
+		else if(type == 2)
+		{
+			for(var i = 0; i < options.length; i++)
+			{
+				addHTML = '<div = class = "row"><input type="checkbox" disabled id = "check'+i+'" name="vehicle" value="Bike" style="height:15px;width:15px;margin-left:5px;margin-right:5px;visibility:hidden"><button class = "btn btn-default" style="text-align: left;white-space: normal;width:100%" id="mButton" box = "check'+i+'" data-toggle="buttons">'+options[i].text+'</button><div>';
+				$("#questionContent").append(addHTML);
+			}
+			
+		}
+		else if(type == 3)
+		{
+			addHTML = '<h4 id = "answerIcon">Response</h4><textarea class = "form-control" disabled rows="1" style="width:100%; overflow-y : hidden; resize:none" id="textBox"></textarea>';
+			$("#questionContent").append(addHTML);
+			addHTML = '<h4>Correct Answer</h4><textarea class = "form-control" disabled rows="1" style="width:100%; overflow-y : hidden; resize:none" id="textAnswer"></textarea>';
+			$("#questionContent").append(addHTML);
+		}
+		
+		//For code highlighting
+		Prism.highlightAll();
+	}
+	else
+	{
+		$('div[id="formError"]').html( generateAlert("Unknown type asked", 4) );
+		console.log(type);
+	}
+	
+	userid = sessionStorage.getItem('userID');
+	questionID = sessionStorage.getItem('questionID');
+	console.log(questionID);
+	
+	// Update selected active question on quesiton list
+	$('[name]').removeClass('active');
+	$('[name='+questionID+']').addClass('active');
+	$("#tooltip").css("visibility", "");
+	
+	//get the results for the question
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/results/" + questionID +"/question/"+userid,
+	    success: getAnswerCallback,
+	    error: getAnswerCallback
+	    });
+};
+
+function getAnswerCallback(result, error)
+{
+	if(error=="success")
+		{
+			var results = result.results;
+			var callbackResult = JSON.parse(sessionStorage.getItem("callbackResult"));
+			var options = callbackResult.options;
+			var answer;
+			var qid = result.qID;
+			
+			$('#score').empty();
+			//get the student's score
+			var studentScore = 0;
+			$("#date").empty();
+			for(var j = 0; j < results.length; j++)
+				{
+					for(var k = 0; k < results[j].users.length; k++)
+						{
+							studentScore += results[j].users[k].points;
+							
+							$("#date").append('date answered: ' + results[j].users[k].date);
+						}
+				}
+			$("#score").append(studentScore+"/"+result.value);
+			
+			if(results.length > 0)
+				{
+				if(callbackResult.type == 0)
+					{
+						$("#questionContent2").empty();
+						for(var i = 0; i < options.length; i++)
+						{
+							for(var j = 0; j< results.length; j++)
+							{
+								if(results[j].id == options[i].optionId)
+									{							
+										if(results[j].count > 0 && results[j].correct)
+										{
+											addHTML = '<label class="btn btn-default active" id="options" name="'+results[j].id+'" style="text-align: left;white-space: normal;background-color:#FEFE6F; border-color:green; border-width:5px;cursor:default"><input class="btn btn-default" type="radio" id="option" name="'+results[j].id+'" autocomplete="off"><span class="glyphicon glyphicon-ok" style="color:green"></span>'+results[j].name+'</label>';
+										}
+										else if(results[j].count > 0 && !results[j].correct)
+										{
+											addHTML = '<label class="btn btn-default active" id="options" name="'+results[j].id+'" style="text-align: left;white-space: normal;background-color:#FEFE6F; border-color:red; border-width:5px;cursor:default"><input class="btn btn-default" type="radio" id="option" name="'+results[j].id+'" autocomplete="off"><span class="glyphicon glyphicon-remove" style="color:red"></span>'+results[j].name+'</label>'
+										}
+										else if(results[j].count == 0 && results[j].correct)
+										{
+											addHTML = '<label class="btn btn-default" id="options" name="'+results[j].id+'" style="text-align: left;white-space: normal; border-color:green; border-width:5px;cursor:default;background:transparent"><input class="btn btn-default" type="radio" id="option" name="'+results[j].id+'" autocomplete="off">'+results[j].name+'</label>';
+										}
+										else
+										{
+											addHTML = '<label class="btn btn-default" id="options" name="'+results[j].id+'" style="text-align: left;white-space: normal;cursor:default;background:transparent"><input class="btn btn-default" type="radio" id="option" name="'+results[j].id+'" autocomplete="off">'+results[j].name+'</label>';
+										}
+									}
+							}
+							$("#questionContent2").append(addHTML);
+						}
+						
+					}
+				else if(callbackResult.type == 1)
+					{
+						fillInBlankAnswerGrab(results);						
+					}
+				else if(callbackResult.type == 2)
+				{
+					$("#questionContent").empty();
+					for(var i = 0; i < options.length; i++)
+					{
+						for(var j = 0; j < results.length; j++)
+						{
+							if(results[i].count > 0 && results[i].correct)
+							{
+								addHTML = '<div = class = "row"><label for="check'+i+'"></label><button circle = "circle'+i+'" circleGreen = true class = "btn btn-default" id="mButton" style="text-align: left;white-space: normal;background-color:#FEFE6F;width:100%; border-color:green; border-width:5px;cursor:default" optID = "'+results[i].id+'" box = "check'+i+'" data-toggle="buttons">'+results[i].name+'</button><div>';
+								break;
+							}
+							else if(results[i].count > 0 && !results[i].correct)
+							{
+								addHTML = '<div = class = "row"><label for="check'+i+'"></label><button circle = "circle'+i+'" circleGreen = true class = "btn btn-default" id="mButton" style="text-align: left;white-space: normal;background-color:#FEFE6F;width:100%;border-color:red; border-width:5px;cursor:default" optID = "'+results[i].id+'" box = "check'+i+'" data-toggle="buttons">'+results[i].name+'</button><div>';
+								break;
+							}
+							else if(results[i].count == 0 && results[i].correct)
+							{
+								addHTML = '<div = class = "row"><label for="check'+i+'"></label><button circle = "circle'+i+'" circleGreen = false class = "btn btn-default" style="text-align: left;white-space: normal;width:100%;border-color:green; border-width:5px;cursor:default;background:transparent" id="mButton" optID = "'+results[i].id+'" box = "check'+i+'" data-toggle="buttons">'+results[i].name+'</button><div>';
+								break;
+							}
+							else
+							{
+								addHTML = '<div = class = "row"><label for="check'+i+'"></label><button circle = "circle'+i+'" circleGreen = false class = "btn btn-default" style="text-align: left;white-space: normal;width:100%;cursor:default;background:transparent" id="mButton" optID = "'+results[i].id+'" box = "check'+i+'" data-toggle="buttons">'+results[i].name+'</button><div>';
+							}
+						}
+						$("#questionContent").append(addHTML);
+					}
+					
+				}
+				
+				else if(callbackResult.type == 3)
+				{
+					fillInBlankAnswerGrab(results);					
+				}
+				
+				//get the feedback for the question
+				var data = result.feedback;
+				if(data == "undefined" || data == null)
+					{
+						data = "";
+					}
+				//data = data.replace(/(<p[^>]+?>|<p>|<\/p>)/img, "");
+				document.getElementById("questionFeedback").innerHTML = data;
+				sessionStorage.setItem("answer", JSON.stringify(answer));
+		        
+				}
+			else
+				{
+					console.log("no answer available on student result page");
+				}
+		}
+	else
+		{
+			console.log("error in getting result data");
+		}
+	//use mathJax library to display LaTex.
+	//Use mathJax callback function, to hide spinners and display hidden content
+	MathJax.Hub.Queue(["Typeset",MathJax.Hub], function(){$("#QuestionTitle").css("visibility","");
+	$("#questionQuestion").css("visibility","");
+	$("#questionContent").css("visibility","");
+	$("#saveAnswer").css("visibility", "");
+	var ql = JSON.parse(sessionStorage.getItem("questionList"));
+	var index = parseInt(sessionStorage.getItem("index"));
+	//$("#nextQuestionButton").addClass("hidden");
+	//$("#previousQuestionButton").addClass("hidden");
+	if(index == 0 && index != ql.length-1 )
+		{
+		$("#previousQuestionButton").addClass("hidden")
+		$("#nextQuestionButton").removeClass("hidden");
+		}
+	else if(ql.length-1 == 0)
+		{
+		$("#previousQuestionButton").addClass("hidden")
+		$("#nextQuestionButton").addClass("hidden");
+		}
+	else if(index == ql.length-1 && index != 0)
+		{
+		$("#nextQuestionButton").addClass("hidden");
+		$("#previousQuestionButton").removeClass("hidden");
+		}
+	else if(index != ql.length-1 && index != 0)
+		{
+		$("#nextQuestionButton").removeClass("hidden");
+		$("#previousQuestionButton").removeClass("hidden");
+		}
+	else
+		{
+		
+		}
+	});
+	renderTagsForQuestion(qid);
+	$('#loadClassListSpinner').hide();
+	$('#loadGraphSpinner').hide();
+};
+
+//Fills in fill in blank or numeric answer
+function fillInBlankAnswerGrab(data)
+{
+	for(var j = 0; j< data.length; j++)
+	{
+		//If the answer has count > 0 then its our answer
+		if(data[j].count > 0)
+		{
+			if(data[j].correct)
+			{
+				document.getElementById("textAnswer").innerHTML = data[j].name;
+				$("#textBox").css("border-width","5px");
+				$("#textBox").css("border-color","green");
+				$("#answerIcon").append('<span class ="glyphicon glyphicon-ok" style="color:green"></span>');
+			}
+			else
+			{
+				$("#answerIcon").append('<span class ="glyphicon glyphicon-remove" style="color:red"></span>');
+				$("#textBox").css("border-width","5px");
+				$("#textBox").css("border-color","red");
+			}
+			document.getElementById("textBox").innerHTML = data[j].name;
+			answer = data[j].name;
+		}
+		else
+		{
+			document.getElementById("textAnswer").innerHTML = data[j].name;
+		}
+	}
+};
+
+/**
+ * when the window size is changed, change accordian tab accordingly
+ */
+$(window).resize(function(){
+	resize();
+});
+
+/**
+ * Collapse the accordian menu depending on the size of the window screen
+ */
+function resize()
+{
+	var t = document.getElementById("collapseOne");
+	if ($(window).width() <= 800){	
+		
+		t.setAttribute("class", "panel-collapse collapse");
+	}
+	else
+		{
+		t.setAttribute("class", "panel-collapse collapse in");
+		}
+}
+
+/**
+ * Clicking on graph tab
+ */
+$(document).on('click', '#graphResult', function(event)
+{
+	event.preventDefault();
+	
+	$("#resultContent").addClass("hidden");
+	$("#contentHolder").removeClass("hidden");
+	sessionStorage.setItem("isGraph", JSON.stringify(true));
+	var questionID = sessionStorage.getItem("currQID");
+	selectQuestionFromExistingData(questionID);
+	
+});
+
+/**
+ * Clicking on question tab
+ */
+$(document).on('click', '#questionResult', function(event)
+{
+	event.preventDefault();
+	sessionStorage.setItem("isGraph", JSON.stringify(false));
+	$("#contentHolder").addClass("hidden");
+	$("#resultContent").removeClass("hidden");
+	
+});
+
+/**
+ * Clicking on a question
+ */
+$(document).on('click', '#question', function(event)
+{
+	event.preventDefault();
+	questionID = event.currentTarget.name;
+	$("#questionFeedback").empty();
+	sessionStorage.setItem("currQID", questionID);
+	loadNewQuestion(questionID);
+});
+
+/**
+ * Load a new question with the provided questionId
+ */
+function loadNewQuestion(questionID){
+	
+	// Handle any warnings from auto updating
+	var closedId = $('#alertBox').attr("closedId");	// The question ID where alert was generated for question being closed
+	var updateId = $('#alertBox').attr("updateId");	// The question ID where alert was generated for question being updated
+	if(closedId != null){	// If a question was previously closed
+		$('#alertBox').removeAttr('closedId');	// Clear flag for next time
+	} else {
+		$('#closedAlert').empty();	// Clear any alert messages
+	}
+	if(updateId != null){	// If a question was previously updated
+		$('#alertBox').removeAttr('updateId');	// Clear flag for next time
+	} else {
+		$('#updateAlert').empty();	// Clear any alert messages
+	}
+	
+	var ql = JSON.parse(sessionStorage.getItem("questionList"));
+	var index = parseInt(sessionStorage.getItem("index"));
+	for(var i = 0; i < ql.length; i++)
+		{
+			if(ql[i] == questionID)
+				{
+					index = i;
+					break;
+				}
+		}
+	sessionStorage.setItem("index", index);
+	
+	selectQuestionFromExistingData(questionID);
+	sessionStorage.setItem("currQID", questionID);
+	sessionStorage.setItem("questionID", questionID);
+	$('div[id="formError"]').empty();
+	$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/question/" + questionID,
+		    success: questionCallback,
+		    error: questionCallback
+		    });
+};
+
+/**
+ * Go to the previous question, if there exist a previous question
+ */
+$(document).on('click', "#previousQuestionButton", function(event)
+		{
+			event.preventDefault();
+			var index = parseInt(sessionStorage.getItem("index"));
+			var ql = JSON.parse(sessionStorage.getItem("questionList"));
+			if(index != 0)
+				{
+				loadNewQuestion(ql[index -1]);
+				}
+		});
+
+/**
+ * go to the next question, if there exist a next question
+ */
+$(document).on('click', "#nextQuestionButton", function(event)
+		{
+			event.preventDefault();
+			var index = parseInt(sessionStorage.getItem("index"));
+			var ql = JSON.parse(sessionStorage.getItem("questionList"));
+			if(index != ql.length)
+				{
+					loadNewQuestion(ql[index +1]);
+				}
+		});
+
+

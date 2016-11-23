@@ -1,0 +1,32 @@
+        <!-- Navigation -->
+        <nav class="navbar navbar-default navbar-static-top" id="mainNav" role="navigation" style="margin-bottom: 0">
+        	<div class="container-fluid">
+	            <div class="navbar-header">
+	                <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#mainNavbar">
+	                    <span class="sr-only">Toggle navigation</span>
+	                    <span class="icon-bar"></span>
+	                    <span class="icon-bar"></span>
+	                    <span class="icon-bar"></span>
+	                </button>
+	                <!-- Sidebar toggle button. Disabled for now until layout issues can be fixed. 
+	               	<button type="button" id="sidebarToggleBtn" class="navbar-toggle" data-toggle="collapse" data-target="#side-menu-parent">
+	                    Questions
+	                </button>
+	                -->
+	                <div id ="studentMainNav"></div>
+	                <!--  <a class="navbar-brand" href="index.html">Turing Point</a> -->
+	                <img class="navbar-brand" id="logo" src="../img/logo.png">
+	            </div>
+	
+				<div class="collapse navbar-collapse" id="mainNavbar">
+		            <!-- /.navbar-header -->
+		            <ul class="nav navbar-nav navbar-left" id="menu">
+						<!-- Menu items injected here -->
+		            </ul>
+		            <ul class="nav navbar-nav navbar-right">
+		            	<li><a href="#" id="loginLogout"><span class="glyphicon glyphicon-log-in"></span> Login</a></li>
+				        <li><a href="#" id="username"><span class="glyphicon glyphicon-user"></span> Sign Up</a></li>
+     				</ul>
+	            </div>
+            </div>
+		</nav>

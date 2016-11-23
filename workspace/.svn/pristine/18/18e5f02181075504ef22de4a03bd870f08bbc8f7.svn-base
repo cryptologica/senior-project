@@ -1,0 +1,5 @@
+package com.turingpoint.dbmodel.model;
+
+public enum Role {
+	STUDENT, INSTRUCTOR;
+}

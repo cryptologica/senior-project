@@ -1,0 +1,931 @@
+package com.turingpoint.polling;
+
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+
+import javax.ws.rs.Consumes;
+import javax.ws.rs.GET;
+import javax.ws.rs.POST;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import com.turingpoint.ServerContext;
+import com.turingpoint.ServerTypes;
+import com.turingpoint.dbmodel.db.dto.LectureStatus;
+import com.turingpoint.dbmodel.db.mapping.ActiveQuestion;
+import com.turingpoint.dbmodel.db.mapping.Course;
+import com.turingpoint.dbmodel.db.mapping.Lecture;
+import com.turingpoint.dbmodel.db.mapping.Question;
+import com.turingpoint.dbmodel.db.mapping.QuestionOption;
+import com.turingpoint.dbmodel.db.mapping.User;
+import com.turingpoint.dbmodel.db.persister.CoursePersister;
+import com.turingpoint.dbmodel.db.persister.LecturePersister;
+import com.turingpoint.dbmodel.db.persister.QuestionOptionPersister;
+import com.turingpoint.dbmodel.db.persister.QuestionPersister;
+import com.turingpoint.dbmodel.db.persister.ResponsePersister;
+import com.turingpoint.dbmodel.model.QuestionType;
+import com.turingpoint.dbmodel.model.Role;
+
+@Path("/question")
+@Produces(MediaType.APPLICATION_JSON)
+public class QuestionServices {
+
+	ServerContext server = ServerContext.INSTANCE;
+
+    @GET
+    @Path("/{questionID}")
+    public Response GetQuestionDetail(@PathParam("questionID") Long questionID)
+    {
+    	// TODO: Currently we send back the answer for both the student
+    	// and the instructor client. Once authentication is working, we should
+    	// be able to determine the user's role and only send answers back
+    	// to instructors. For prototype, it's whatever.
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+
+    	Question questionInQuestion = Question.getQuestion(questionID);
+    	if(questionInQuestion == null)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Could not retrieve questionID: " + questionID;
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+
+    	responseObject.put("version",questionInQuestion.getVersion());
+    	responseObject.put("title", questionInQuestion.getTitle());
+    	responseObject.put("content",questionInQuestion.getQuestion());
+    	responseObject.put("type", questionInQuestion.getType().ordinal());
+    	//responseObject.put("feedback", requestedQuestionDetail.getType());
+    	//responseObject.put("group", requestedQuestionDetail.getType());
+    	//responseObject.put("value", requestedQuestionDetail.getType());
+
+    	if(questionInQuestion.getType() == QuestionType.MULTIPLE_CHOICE)
+    	{
+	    	JSONArray optionList = new JSONArray();
+
+	    	List<QuestionOption> options = QuestionOptionPersister.getQuestionOptions(questionID);
+	    	QuestionOption answer = null;
+	    	for(QuestionOption o : options)
+	    	{
+	    		JSONObject option = new JSONObject();
+	    		option.put("optionId",o.getOptionId());
+	    		option.put("text",o.getName());
+
+	    		optionList.put(option);
+
+	    		if (o.getIsCorrect())
+	    		{
+	    			answer = o;
+	    		}
+	    	}
+	    	responseObject.put("answer", answer.getOptionId());
+	    	responseObject.put("options", optionList);
+    	}
+    	if(questionInQuestion.getType() == QuestionType.FILL_IN_BLANK)
+    	{
+    		QuestionOption option = QuestionOptionPersister.getQuestionOptions(questionID).get(0);
+    		responseObject.put("answer", option.getAnswer());
+    	}
+    	if(questionInQuestion.getType() == QuestionType.MULTIPLE_ANSWER)
+    	{
+	    	JSONArray optionList = new JSONArray();
+
+	    	List<QuestionOption> options = QuestionOptionPersister.getQuestionOptions(questionID);
+	    	for(QuestionOption o : options)
+	    	{
+	    		JSONObject option = new JSONObject();
+	    		option.put("optionId",o.getOptionId());
+	    		option.put("text",o.getName());
+	    		if (o.getIsCorrect())
+	    		{
+	    			option.put("correct", 1);
+	    		}
+	    		else 
+	    		{
+	    			option.put("correct", 0);
+	    		}
+
+	    		optionList.put(option);
+	    	}
+	    	responseObject.put("options", optionList);
+    	}
+    	
+    	responseObject.put("questionId", questionID);
+
+
+    	/*
+    	String wildCard = "Service Not Yet Implemented";
+    	JSONObject responseObject = new JSONObject();
+    	responseObject.put("msg", wildCard);*/
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+
+    @POST
+    @Path("/{questionID}/answer")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response AnswerQuestion(InputStream inputJSON, @PathParam("questionID") Long questionID)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	Long optionId = (long) 0;
+    	ArrayList<Long> optionIds = new ArrayList<Long>();
+    	String response = "";
+    	
+    	Question questionInQuestion = Question.getQuestion(questionID);
+    	if(questionInQuestion == null)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Could not retrieve questionID: "+ questionID;
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+
+    	
+    	//check question is on before accepting asnwer
+    	//find out which course the question is in
+    	try
+    	{
+    		long lectureForQuestion = Question.getQuestion(questionID).getLectureId();
+    		long courseForLecture = Lecture.getLecture(lectureForQuestion).getClassId();
+    		ActiveQuestion A = ActiveQuestion.getActiveQuestion(courseForLecture, questionID);
+    		
+    		if(A==null)
+    		{
+    			//TODO: Log bad user id and stack trace
+        		msg = "Question not open for response";
+        		responseObject.put("msg",msg);
+        		return Response.status(403).entity(responseObject.toString()).build();
+    		}
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Could not retrieve state for questionID: "+ questionID;
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet";
+    		System.out.println("QuestionServices | 122 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	
+    	
+    	Integer currentQuestionVersion = Question.getQuestion(questionID).getVersion();
+    	
+    	Long userId;
+    	Integer version;
+    	//Validate parameters
+    	try
+    	{
+			userId = inputObject.getLong("userId");
+			version= inputObject.getInt("version");
+			if(questionInQuestion.getType().equals(QuestionType.MULTIPLE_CHOICE))
+			{
+				optionId = inputObject.getLong("optionId");
+			}
+			else if(questionInQuestion.getType().equals(QuestionType.FILL_IN_BLANK))
+			{
+				response = inputObject.getString("response");
+				optionId = QuestionOptionPersister.getQuestionOptions(questionID).get(0).getOptionId();	
+			}
+			else if (questionInQuestion.getType().equals(QuestionType.MULTIPLE_ANSWER))
+			{
+				JSONArray arr = inputObject.getJSONArray("optionIds");
+				for (Object x: arr)
+				{
+					optionIds.add((Long) x);
+				}
+			}
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	
+    	if(version == currentQuestionVersion)
+    	{
+	
+	    	//check if this response is in the cache already.... this is the only way i know of to avoid a massive fkup
+	    	com.turingpoint.dbmodel.db.mapping.Response ans;
+	    	
+	    	//when this comes back with an existing object, we cant create a new response, so we update the existing one
+	    	ans = com.turingpoint.dbmodel.db.mapping.Response.getResponse(userId, questionID);
+	    	
+	    	if(ans == null)
+	    	{
+	    		ans = ResponsePersister.storeNewResponse(userId, questionID, optionId, response);
+	    	}
+	    	else
+	    	{
+	        	if(inputObject.has("optionId"))
+	        		ans.setOptionId(optionId);
+	        	else
+	        		ans.setTextResponse(response);
+	        	
+	        	ans.update();
+	    	}
+	
+	    	try
+	    	{
+	    		server.putCacheResponse(questionID, ans);
+	    	}
+	    	catch(Exception e)
+	    	{
+	    		System.err.println("QuestionServices | 145 | Cannot rapid cache question, was the server restarted?");
+	    	}
+	    	
+	    	
+
+	    	msg = "Answer Accepted";
+	    	responseObject.put("msg", msg);
+	    	return Response.status(200).entity(responseObject.toString()).build();
+    	}
+    	
+    	msg = "Old Version";
+    	responseObject.put("msg", msg);
+    	return Response.status(400).entity(responseObject.toString()).build();
+
+    }
+
+    @POST
+    @Path("/{questionID}/start")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response StartQuestion(InputStream inputJSON, @PathParam("questionID") Long questionID)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet";
+    		System.out.println("QuestionServices | 226 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	
+    	long courseId;
+    	
+    	try
+    	{
+    		courseId = inputObject.getLong("courseId");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Start the question cache here to ensure its always open before responses come in
+    	server.putCacheQuestion(questionID, Question.getQuestion(questionID).getType());
+    	
+    	//open question
+    	
+    	try
+    	{
+    		QuestionPersister.startQuestion(courseId, questionID);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Question already started";
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+
+    	//reply to client
+    	msg = "Question Started";
+    	responseObject.put("msg", msg);
+    	responseObject.put("questionId", questionID);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+
+    @POST
+    @Path("/{questionID}/end")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response EndQuestion(InputStream inputJSON, @PathParam("questionID") Long questionID)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("QuestionServices | 264 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	long courseId;
+    	
+    	try
+    	{
+    		courseId = inputObject.getLong("courseId");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+
+    	QuestionPersister.endQuestion(courseId, questionID);
+    	
+    	server.dropCache(questionID);
+    	
+    	msg = "Question ended";
+    	responseObject.put("msg", msg);
+    	responseObject.put("questionId", questionID);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+
+    
+    ////I say we just call the first one and always use the post method at this point - Tony
+    @PUT
+    @Path("/{questionID}/answer")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response AnswerQuestionAgain(InputStream inputJSON, @PathParam("questionID") Long questionID)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	Long optionId = (long) 0;
+    	String response = "";
+
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("QuestionServices | 303 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	long userId;
+    	int version;
+    	
+    	try
+    	{
+    		userId = inputObject.getLong("userId");
+        	version = inputObject.getInt("version");
+        	if(inputObject.has("optionId"))
+        	{
+        		optionId = inputObject.getLong("optionId");
+        		//optionId = Long.parseLong((String)inputObject.get("optionId"));
+        	}
+        	else if(inputObject.has("response"))
+        	{
+        		response = inputObject.getString("response");
+        	}
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	msg = "Update Accepted";
+    	responseObject.put("msg", msg);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+
+    @POST
+    @Path("/{questionID}/setGroup")
+    @Consumes(MediaType.APPLICATION_JSON)
+    //TODO: Finish when question persister supports this operation
+    public Response SetQuestionGroup(@PathParam("questionID") Long questionID)
+    {
+    	String wildCard = "Service Not Yet Implemented";
+    	JSONObject responseObject = new JSONObject();
+    	responseObject.put("msg", wildCard);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+
+    @POST
+    @Path("/create")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response CreateQuestion(InputStream inputJSON)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	Long optionId = (long) 0;
+    	String response = "";
+
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("QuestionServices | 394 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+
+    	String questionTitle;
+    	String content;
+    	long lectureId;
+    	String feedback;
+    	int questionGroup;
+    	int pointValue;
+    	int parsedType;
+    	String answer = "";
+    	QuestionType type;
+    	long coureseId;
+    	try
+    	{
+        	questionTitle = inputObject.getString("title");
+        	content = inputObject.getString("content");
+        	lectureId = inputObject.getLong("lectureId");
+        	feedback = inputObject.getString("feedback");
+        	questionGroup = inputObject.getInt("group");
+        	pointValue = inputObject.getInt("value");
+        	parsedType = inputObject.getInt("type");
+        	coureseId = inputObject.getLong("courseId");
+        	
+        	type = QuestionType.values()[parsedType];
+        	
+        	if(type.equals(QuestionType.FILL_IN_BLANK))
+        	{
+        		answer = inputObject.getString("answer");
+        	}
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+
+    	Question createdQuestion = QuestionPersister.createQuestion(lectureId, pointValue, content, questionTitle, type, coureseId);
+    	List<QuestionOption> returnList = null;
+    	
+    	////////////////////////////////////////////Add responses
+    	if(type.equals(QuestionType.MULTIPLE_CHOICE))
+    	{
+    		int correctIndex = inputObject.getInt("answer");
+
+    		List<QuestionOption> optionList = new ArrayList<QuestionOption>();
+
+    		JSONArray incomingOptions = inputObject.getJSONArray("options");
+    		JSONObject obj;
+    		for(int i = 0 ; i < incomingOptions.length(); i++)
+    		{
+	    		QuestionOption newOption = new QuestionOption();
+
+	    		obj = (JSONObject)incomingOptions.get(i);
+
+	    		newOption.setName(obj.getString("text"));
+	    		if(i == correctIndex)
+	    		{
+	    			newOption.setIsCorrect(true);
+	    		}
+	    		else
+	    		{
+	    			newOption.setIsCorrect(false);
+	    		}
+
+	    		optionList.add(newOption);
+    		}
+
+    		returnList = QuestionOptionPersister.addOptionsToQuestion(createdQuestion.getQuestionId(), optionList);
+    		////
+    	}
+    	else if(type.equals(QuestionType.FILL_IN_BLANK))
+    	{
+    		List<QuestionOption> optionList = new ArrayList<QuestionOption>();
+    		String correctText = inputObject.getString("answer");
+
+    		QuestionOption newOption = new QuestionOption();
+    		newOption.setIsCorrect(true);
+
+    		newOption.setAnswer(correctText);
+
+    		optionList.add(newOption);
+
+    		returnList = QuestionOptionPersister.addOptionsToQuestion(createdQuestion.getQuestionId(), optionList);
+    	}
+    	else if(type.equals(QuestionType.MULTIPLE_ANSWER))
+    	{
+    		List<QuestionOption> optionList = new ArrayList<QuestionOption>();
+
+    		JSONArray incomingOptions = inputObject.getJSONArray("options");
+    		JSONObject obj;
+    		for(int i = 0 ; i < incomingOptions.length(); i++)
+    		{
+	    		QuestionOption newOption = new QuestionOption();
+
+	    		obj = (JSONObject)incomingOptions.get(i);
+
+	    		newOption.setName(obj.getString("text"));
+	    		if(obj.getInt("correct") == 1)
+	    		{
+	    			newOption.setIsCorrect(true);
+	    		}
+	    		else
+	    		{
+	    			newOption.setIsCorrect(false);
+	    		}
+
+	    		optionList.add(newOption);
+    		}
+
+    		returnList = QuestionOptionPersister.addOptionsToQuestion(createdQuestion.getQuestionId(), optionList);
+    	}
+    	
+    	JSONArray optionIds = new JSONArray();
+    	for(QuestionOption o: returnList) 
+    	{
+    		Long tempOptionId = o.getOptionId();
+    		optionIds.put(tempOptionId);
+    	}
+    	
+    	responseObject.put("questionId", createdQuestion.getQuestionId());
+    	responseObject.put("title", createdQuestion.getTitle());
+    	responseObject.put("version", createdQuestion.getVersion());
+    	responseObject.put("type", createdQuestion.getType().ordinal());
+    	responseObject.put("optionIds", optionIds);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    	//Question newQuestion = QuestionPersister.createQuestion(lectureId, points, questionContent, title, type)
+
+    }
+
+    @PUT
+    @Path("/{questionID}/update")
+    @Consumes(MediaType.APPLICATION_JSON)
+    //TODO: Finish when question persister supports this operation
+    public Response EditQuestion(InputStream inputJSON, @PathParam("questionID") Long questionID)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("QuestionServices | 394 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	String questionTitle;
+    	String content;
+    	long lectureId;
+    	String feedback;
+    	int questionGroup;
+    	int pointValue;
+    	int parsedType;
+    	String answer = "";
+    	QuestionType type;
+    	try
+    	{
+        	questionTitle = inputObject.getString("title");
+        	content = inputObject.getString("content");
+        	lectureId = inputObject.getLong("lectureId");
+        	feedback = inputObject.getString("feedback");
+        	questionGroup = inputObject.getInt("group");
+        	pointValue = inputObject.getInt("value");
+        	parsedType = inputObject.getInt("type");
+        	
+        	type = QuestionType.values()[parsedType];
+        	
+        	if(type.equals(QuestionType.FILL_IN_BLANK))
+        	{
+        		answer = inputObject.getString("answer");
+        	}
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+
+    	Question questionToUpdate = Question.getQuestion(questionID);
+    	questionToUpdate.setTitle(questionTitle);
+    	questionToUpdate.setQuestion(content);
+    	questionToUpdate.setLectureId(lectureId);
+    	questionToUpdate.setType(type);
+    	//set value
+    	//set feedback
+    	//set group
+    	questionToUpdate.update();
+
+    	List<QuestionOption> questionOptions = QuestionOptionPersister.getQuestionOptions(questionID);
+    	Boolean[] keepIndex = new Boolean[questionOptions.size()];
+    	for(int i = 0; i < questionOptions.size();i++)
+    	{
+    		keepIndex[i] = false;
+    	}
+
+    	//Deal with options that are existing options that need to be updated
+    	if(type.equals(QuestionType.MULTIPLE_CHOICE))
+    	{
+    		for(int i = 0; i < questionOptions.size();i++)
+        	{
+        		questionOptions.get(i).setAnswer("");
+        	}
+    		
+    		//Get the correct question index
+    		int correctIndex = inputObject.getInt("answer");
+
+    		List<QuestionOption> optionList = new ArrayList<QuestionOption>();
+
+    		JSONArray incomingOptions = inputObject.getJSONArray("options");
+    		JSONObject obj;
+
+    		//Create list of questions that came in
+    		for(int i = 0 ; i < incomingOptions.length(); i++)
+    		{
+
+    			//make an option
+	    		QuestionOption newOption = new QuestionOption();
+
+	    		//get the option from the list
+	    		obj = (JSONObject)incomingOptions.get(i);
+
+	    		//decide if the optionId is an existing option or not
+	    		long optId = (Integer)obj.get("optionId");
+
+	    		for(int j = 0; j < questionOptions.size(); j++)
+	    		{
+	    			if(optId == questionOptions.get(j).getOptionId())
+	    				keepIndex[j] = true;
+	    		}
+
+	    		//If this is an existing option, update its vitals
+	    		if(optId != -1)
+	    		{
+	    			newOption = QuestionOption.getQuestionOption(optId);
+	    			newOption.setName(obj.getString("text"));
+
+	    			if(i == correctIndex)
+		    		{
+		    			newOption.setIsCorrect(true);
+		    		}
+		    		else
+		    		{
+		    			newOption.setIsCorrect(false);
+		    		}
+
+	    			newOption.update();
+	    		}
+	    		else
+	    		{
+		    		//Else create a new option
+		    		newOption.setName(obj.getString("text"));
+		    		if(i == correctIndex)
+		    		{
+		    			newOption.setIsCorrect(true);
+		    		}
+		    		else
+		    		{
+		    			newOption.setIsCorrect(false);
+		    		}
+
+		    		optionList.add(newOption);
+	    		}
+
+    		}
+
+    		if(optionList.size() > 0)
+    		{
+    			QuestionOptionPersister.addOptionsToQuestion(questionID, optionList);
+    		}
+
+    	}
+    	else if(type.equals(QuestionType.FILL_IN_BLANK))
+    	{
+
+    		String correctText = (String)inputObject.get("answer");
+    		questionOptions.get(0).setIsCorrect(true);
+    		questionOptions.get(0).setName("");
+    		questionOptions.get(0).setAnswer(correctText);
+    		questionOptions.get(0).update();
+    		keepIndex[0] = true;
+    	}
+    	else if(type.equals(QuestionType.MULTIPLE_ANSWER))
+    	{
+    		for(int i = 0; i < questionOptions.size(); i++)
+        	{
+        		questionOptions.get(i).setAnswer("");
+        	}
+
+    		List<QuestionOption> optionList = new ArrayList<QuestionOption>();
+
+    		JSONArray incomingOptions = inputObject.getJSONArray("options");
+    		JSONObject obj;
+
+    		//Create list of questions that came in
+    		for(int i = 0 ; i < incomingOptions.length(); i++)
+    		{
+
+    			//make an option
+	    		QuestionOption newOption = new QuestionOption();
+
+	    		//get the option from the list
+	    		obj = (JSONObject)incomingOptions.get(i);
+
+	    		//decide if the optionId is an existing option or not
+	    		long optId = (Integer)obj.get("optionId");
+	    		
+	    		int correct = obj.getInt("correct");
+
+	    		for(int j = 0; j < questionOptions.size(); j++)
+	    		{
+	    			if(optId == questionOptions.get(j).getOptionId())
+	    				keepIndex[j] = true;
+	    		}
+
+	    		//If this is an existing option, update its vitals
+	    		if(optId != -1)
+	    		{
+	    			newOption = QuestionOption.getQuestionOption(optId);
+	    			newOption.setName(obj.getString("text"));
+	    			
+	    			if(correct == 1)
+		    		{
+		    			newOption.setIsCorrect(true);
+		    		}
+		    		else
+		    		{
+		    			newOption.setIsCorrect(false);
+		    		}
+
+	    			newOption.update();
+	    		}
+	    		else
+	    		{
+		    		//Else create a new option
+		    		newOption.setName(obj.getString("text"));
+		    		if(correct == 1)
+		    		{
+		    			newOption.setIsCorrect(true);
+		    		}
+		    		else
+		    		{
+		    			newOption.setIsCorrect(false);
+		    		}
+
+		    		optionList.add(newOption);
+	    		}
+
+    		}
+
+    		if(optionList.size() > 0)
+    		{
+    			QuestionOptionPersister.addOptionsToQuestion(questionID, optionList);
+    		}
+
+    	}
+
+    	//Delete non represented options
+		for(int j = 0; j < questionOptions.size(); j++)
+		{
+			if(!keepIndex[j])
+				 QuestionOption.getQuestionOption(questionOptions.get(j).getOptionId()).delete();
+		}
+
+		JSONArray optionIds = new JSONArray();
+		List<QuestionOption> list = QuestionOptionPersister.getQuestionOptions(questionID);
+    	for(QuestionOption o: list)
+    	{
+    		Long tempOptionId = o.getOptionId();
+    		optionIds.put(tempOptionId);
+    	}
+
+    	responseObject.put("questionID", questionID);
+    	responseObject.put("title", questionTitle);
+    	responseObject.put("type", type.ordinal());
+    	responseObject.put("optionIds", optionIds);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @POST
+    @Path("/{questionID}/delete")
+    @Consumes(MediaType.APPLICATION_JSON)
+    //TODO: Finish when question persister supports this operation (Not phase 1)
+    public Response DeleteQuestion(InputStream inputJSON,@PathParam("questionID") Long questionID)  
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		System.out.println("QuestionServices | 394 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	long userID;
+    	try
+    	{
+        	userID = inputObject.getLong("userId");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	//find out which course the question is in
+    	long lectureForQuestion = Question.getQuestion(questionID).getLectureId();
+    	long courseForLecture = Lecture.getLecture(lectureForQuestion).getClassId();
+    	
+    	//find out if the user is an instructor and whether they are in the class (for now that means they are its teacher
+    	boolean isInstructor = false;
+    	if(User.getUser(userID).getRole() == Role.INSTRUCTOR)
+    	{
+    		isInstructor = true;
+    	}
+    	
+    	List<Course> userCourses = CoursePersister.getCoursesOfUser(userID);
+    	boolean ownsCourse = false;
+    	for(Course C : userCourses)
+    	{
+    		if(C.getClassId() == courseForLecture)
+    		{
+    			ownsCourse = true;
+    		}
+    	}
+    	
+    	if(ownsCourse)
+    	{
+    		Question target = Question.getQuestion(questionID);
+    		target.delete();
+    		msg = "Question Deleted";
+    		responseObject.put("msg",msg);
+    		responseObject.put("questionId", questionID);
+    		return Response.status(200).entity(responseObject.toString()).build();
+    	}
+    	
+    	msg = "No permission";
+    	responseObject.put("msg",msg);
+		return Response.status(403).entity(responseObject.toString()).build();
+    }
+
+}

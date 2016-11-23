@@ -1,0 +1,27 @@
+<!-- Instructor Home page HTML -->
+<div>
+	<div id="courseGroupingsDiv">
+		<fieldset id="coursesID">
+			<legend>Courses</legend>
+			<!-- Courses will be inserted into here -->
+		</fieldset>	
+	</div>
+	<button title="Click to add a course" id="add-course" role="button">
+		<span>Add Course</span>
+	</button>
+</div>
+	
+<!-- Dialog that's displayed when you click "Add Course" -->
+<div id="dialog-form" title="Create new course">
+	<form class="addCourseForm">
+		<fieldset id="formBox">
+			<label for="name">Course Name</label> 
+			<input type="text" name="name" id="name" class="text">
+			<br>
+			<label for="descr">Description</label>
+			<input type="text" name="descr" id="descr" class="text">
+			<!-- Allow form submission with keyboard without duplicating the dialog button -->
+			<input type="submit" tabindex="-1" style="position: absolute; top: -1000px">
+		</fieldset>
+	</form>
+</div>

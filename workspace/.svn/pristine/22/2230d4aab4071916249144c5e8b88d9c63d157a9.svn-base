@@ -1,0 +1,1171 @@
+/**
+ * Initializations
+ */
+$(document).ready(function() {
+	
+	// Remove any previously set question id
+	sessionStorage.removeItem("currQuestion");
+	
+	window.currentTab = "edit"
+	
+	var lectureID = sessionStorage.getItem("lectureID");
+	if (lectureID == null)	// Direct to login page if lectureID not set
+		loadpage("login");
+		
+	var url = sessionStorage.getItem("baseURL") + "/lecture/" + lectureID;
+	$.getJSON(url, questionListCallback);
+	
+	window.presentationFontSize = sessionStorage.getItem("presentationFontSize")
+	if (window.presentationFontSize == null)
+	{
+		sessionStorage.setItem("presentationFontSize",3)
+		window.presentationFontSize = sessionStorage.getItem("presentationFontSize")
+	}
+		
+	redrawFontSizeButtonsAndPresentationFonts();
+	
+	if(window.presentationWindow != null)
+	{
+		window.presentationWindow.$(window.presentationWindow.document).trigger("questionChange");
+		window.presentationWindow.$(window.presentationWindow.document).trigger("fontChange");
+	}
+	
+	///initialize editor window
+	
+	
+});
+
+/**
+ * Delete question button clicked
+ */
+$(document).on('click', '#deleteQuestionBtn', function(event) {
+	event.stopPropagation();
+	var questionTitle = $(this).prev('.title').text().trim();
+	var questionID = $(this).closest('.questionBtn').attr('questionid');
+	
+	// If we delete active question make sure to clear old data in callback
+	if ($(this).closest('.questionBtn').hasClass('active')) {
+		sessionStorage.setItem("deletedActive", true);
+	}
+	else {
+		sessionStorage.setItem("deletedActive", false);
+	}
+	
+	bootbox.dialog({
+		  message: questionTitle + " will be permanently deleted.",
+		  title: "Are you sure?",
+		  buttons: {
+		    danger: {
+		      label: "Yes",
+		      className: "btn-danger",
+		      callback: function() {
+		        var userID = sessionStorage.getItem('userID');
+				var url = sessionStorage.getItem("baseURL") + "/question/" + questionID + "/delete";
+				var data = JSON.stringify({
+						"userId": userID
+				});
+				$.ajax({
+				    type: 'POST',
+				    url: 	url,
+				    data: data,
+				    contentType: "application/json",
+				    dataType: 'json',
+				    success: function(data, status) {
+			    		var questionID = data.questionId;
+			    		var questionTitle = $('a[questionid='+ questionID +'] .title').text();
+			    		$('li:has("a[questionid='+ questionID +']")').remove();
+			    		sessionStorage.removeItem("currQuestion");
+			    		
+			    		// If there's no questions, add message
+			    		if ($('.questionBtn').length == 0){
+			    			appendNoQuestionsMessage();
+			    		}
+			    		var deletedActive = sessionStorage.getItem("deletedActive");
+			    		if (deletedActive == "true") {
+			    			// Clear old data
+				    		$('#newQuestionBtn').click();
+			    		}
+			    		sessionStorage.setItem("deletedActive", false);
+			    		
+			    		// Show success message that disappears after 3 seconds
+			    		$('#side-menu').find('.alert').remove();
+			    		$('#newQuestionBtn').after(generateAlertNonDismiss(questionTitle + ' was successfully deleted.', 'tempAlert', 1));
+			    		$('.tempAlert').fadeOut(5000);
+			    		setTimeout( function() { $('.tempAlert').remove() }, 5000);
+				    },
+					error: function(data, status) {
+						sessionStorage.setItem("deletedActive", false);
+						// Display error msg
+						$('#newQuestionBtn').after(generateAlert('Question deletion failed. Please try again.', 4));
+						console.log("Error deleting question: " + data.msg);
+					}
+				});
+		      }
+		    },
+		    main: {
+		      label: "No",
+		      className: "btn-default",
+		      callback: function() {
+		        // Do nothing
+		      }
+		    }
+		  }
+		});
+	
+});
+
+/**
+ * Toggle "Show Answer" check-box
+ */
+$(document).on('click', '#showAnswerCheckbox', function(event) {
+	$('.correctRadioBtn').toggle();
+	$('#fillInBlankAnswer').toggle();
+	$('.correctCheckboxBtn').toggle();
+});
+
+/**
+ * Click on "Add Option" button (Mult Choice)
+ */
+$(document).on('click', '#addOptionBtn', function(event) {
+	// Append new question option with optionID = -1
+	appendQuestionOption("-1");
+	$('#addAnswerBtn').blur();
+});
+
+/**
+ * Click on "Add Option" button (Mult Choice)
+ */
+$(document).on('click', '#addMultAnswerBtn', function(event) {
+	appendMultAnswerOption("-1");
+	$('#addMultAnswerBtn').blur();
+});
+
+/**
+ * Play / Stop button is clicked
+ */
+$(document).on('click', '.playBtnGroup', function(event) {
+	// Don't allow loadQuestion to be triggered
+	event.stopPropagation();
+	event.stopPropagation();
+
+	var data = new Object();
+	var courseID = sessionStorage.getItem("courseID")
+	data.courseId = parseInt(courseID);
+	var questionID = $(this).parent().attr("questionid");
+	
+	
+	var isPlayBtn = $(this).hasClass("btn-success");	// If currently the play button
+	
+	var url = sessionStorage.getItem("baseURL") + "/question/" + questionID + (isPlayBtn ? "/start" : "/end");
+	console.log(questionID +" : " + isPlayBtn);
+	if(isPlayBtn){
+		$.ajax({
+			  method: "POST",
+			  url: url,
+			  contentType: "application/json",
+			  data: JSON.stringify(data),
+			  complete: setQuestionActiveCallback
+		});
+	} else {
+		$.ajax({
+			  method: "POST",
+			  url: url,
+			  contentType: "application/json",
+			  data: JSON.stringify(data),
+			  complete: setQuestionInactiveCallback
+		});
+	}
+});
+
+
+/**
+ * Server response callback for setting a question active.
+ */
+function setQuestionActiveCallback(data, status) {
+	if(status == "success"){
+		var questionID = data.responseJSON.questionId;
+		displayStopButton(questionID);
+		
+		$("#presentTab").click();
+	}
+}
+
+/**
+ * Server response callback for setting a question inactive.
+ */
+function setQuestionInactiveCallback(data, status) {
+	if(status == "success"){
+		var questionID = data.responseJSON.questionId;
+		displayPlayButton(questionID);
+		
+		// FIXME: Need to actually request and update the review tab before showing it
+		
+		//Show results view
+		$("#reviewTab").click();
+		
+	}
+}
+
+/**
+ * Question is clicked (to load a question)
+ */
+$(document).on('click', '.questionBtn', function(event) {
+	
+	clearFormErrors();	// Clear any existing form errors
+	
+	// Make other questions inactive
+	var questions = $('.questionBtn');
+	for (var i=0; i < questions.length; i++) {
+		$(questions[i]).removeClass('active');
+	}
+	// Make the question user selected active
+	$(this).addClass("active");		// bootstrap class for making button appear selected
+	var questionID = $(this).attr('questionid');
+	
+	//for results
+	window.resultQuestionID = questionID
+	console.log("questionID " + window.resultQuestionID + " selected")
+	
+	var url = sessionStorage.getItem("baseURL") + "/question/" + questionID;
+	$.ajax({
+		  method: "GET",
+		  url: url,
+		  complete: loadQuestionCallback
+	});
+});
+
+/**
+ * Clear all form errors
+ */
+function clearFormErrors(){
+	$('.alertDiv').remove();	// Clear existing errors displays
+	$('#questionTitleText').parent().removeClass('has-error');
+	$('#questionContentText').parent().removeClass('has-error');
+}
+
+/**
+ * New question button clicked
+ */
+$(document).on('click', '#newQuestionBtn', function(event) {
+	
+	clearFormErrors();
+	
+	// Make all questions inactive
+	var questions = $('.questionBtn');
+	for (var i=0; i < questions.length; i++) {
+		$(questions[i]).removeClass('active');
+	}
+	clearQuestionFields();
+	sessionStorage.removeItem("currQuestion");	// Clear any active questions
+	$('#editTab').click();	// Switch to edit tab
+	$('#multiChoiceBtn').click();	// Reposition to multiple-choice question
+	// If we should not show the correct answer(s), hide them
+	if (!$('#showAnswerCheckbox').is(":checked")) {
+		$('.correctRadioBtn').hide();
+		$('#fillInBlankAnswer').hide();
+		$('.correctCheckboxBtn').hide();
+	}
+	$(this).blur();
+});
+
+/**
+ * Callback for fetching all available questions (populating buttons)
+ */
+function questionListCallback(data, status){
+	
+	// If we don't get an error back, then process the data
+	if (status == "success") {
+
+		//$("#lectureName").text(data.name);	// Populate name of the lecture TODO: Implement
+
+		var questions = data.QS;
+		
+		//$('#sidebarToggleBtn').removeClass('hidden');
+		
+		// Start building HTML for sidebar
+		var sidebarHTML = 
+			'<div class="hidden-xs"><label>Questions</label></div>'+
+  '<button class="visible-xs btn btn-primary btn-block" data-toggle="collapse" data-target="#side-menu"><div><label>Toggle Question List</label></div></button>'+
+			"<div class=\"navbar-default sidebar\" role=\"navigation\">"+
+                "<br><br><div class=\"sidebar-nav\">"+
+                    "<ul class=\"nav in\" id=\"side-menu\">";
+		
+		// Close HTML tags for sidebarHTML
+		sidebarHTML +=
+			"   		</ul>"+
+	                "</div>"+
+	                "<!-- /.sidebar-collapse -->"+
+	    			"<br><button type=\"button\" class=\"btn btn-outline btn-primary center-block\" id=\"newQuestionBtn\">New Question</button>"+
+	            "</div>"+
+	            "<!-- /.sidebar-collapse -->";
+		
+		$("#mainNav").append(sidebarHTML);
+
+		if(questions.length == 0){
+			appendNoQuestionsMessage();
+		} else {
+			// Extract info for each question
+			for (var i = 0; i < questions.length; i++) {
+				var questionID = questions[i].questionId;
+				var title = questions[i].title;
+				var version = questions[i].version;
+				// Generate and add the HTML to the page
+
+				appendSidebarQuestion(questionID, title, version);
+			}
+			// Load the first question by default
+			$('.questionBtn')[0].click();
+		}
+		
+		// Hide play/stop button until we know they're up-to-date
+		$('.playBtnGroup').hide();
+		
+		var courseID = sessionStorage.getItem("courseID");	// Get the active questions
+		$.ajax({
+			  method: "GET",
+			  url: sessionStorage.getItem("baseURL") + "/courses/" + courseID + "/status",
+			  complete: updateQuestionStatusesCallback
+		});
+	}
+	else {
+		alert("There was an error retrieving the question list from the server.");
+	}
+		
+};
+
+
+/**
+ * Called in response to getting the list of active questions.
+ * @param data
+ * @param status
+ */
+function updateQuestionStatusesCallback(data, status) {
+	if (status == "success") {
+		var result = data.responseJSON;
+		var questionsList = result.QS;
+		var i, questionID, title, version;
+		for (i=0; i < questionsList.length; i++) {
+			questionID = questionsList[i].questionId;
+			title = questionsList[i].title;
+			version = questionsList[i].version;
+			// Set each question in list to "ON" (red stop icon)
+			displayStopButton(questionID);
+			
+			//var playBtn = $('.questionGroup#'+questionID).closest('.playBtnGroup').find('img')[0];
+			//playBtn.src = playBtn.src.replace("_off","_on");
+		    //$(playBtn).toggleClass("on");
+		}
+		$('.playBtnGroup').show();
+	}
+	else {
+		alert("Error loading questions/statuses!");
+	}
+}
+
+/**
+ * Change the display for a questionID play/stop button to to a stop
+ * @param questionID
+ */
+function displayStopButton(questionID){
+	var button = $('[questionid="' + questionID + '"]').find('.playBtnGroup');
+	$(button).removeClass('btn-circle');
+	$(button).addClass('btn-square');
+	$(button).removeClass('btn-success');
+	$(button).addClass('btn-danger');
+	
+	var icon = $(button).find('.glyphicon');
+	$(icon).removeClass('glyphicon-play');
+	$(icon).addClass('glyphicon-stop');
+}
+
+/**
+ * Change the display for a questionID play/stop button to to a play
+ * @param questionID
+ */
+function displayPlayButton(questionID){
+	var button = $('[questionid="' + questionID + '"]').find('.playBtnGroup');
+	$(button).removeClass('btn-square');
+	$(button).addClass('btn-circle');
+	$(button).removeClass('btn-danger');
+	$(button).addClass('btn-success');
+	
+	var icon = $(button).find('.glyphicon');
+	$(icon).removeClass('glyphicon-stop');
+	$(icon).addClass('glyphicon-play');
+}
+
+
+/**
+ * Append a new sidebar button with the provided questionID, title, and version.
+ */
+function appendSidebarQuestion(questionID, title, version){
+	var trimmedTitle = trimText(title, 22);
+	var buttonHTML =
+		'<li><a class="questionBtn" questionid="' + questionID + '" version="' + version + '" href="#">'+
+		  '<button type="button" class="btn btn-success btn-circle playBtnGroup"><i class="glyphicon glyphicon-play"></i>'+
+		  '</button>'+
+		  '<span class="title"> '+ trimmedTitle +'</span>'+
+		  '<button type="button" id="deleteQuestionBtn" class="btn btn-default btn-circle pull-right"><i class="glyphicon glyphicon-remove"></i>'+
+		  '</button>'+
+		'</a></li>';
+	$("#side-menu").append(buttonHTML);
+}
+
+/**
+ * Append a new question option loaded with an optionID.
+ * Pass a blank optionID for an empty option id.
+ */
+function appendQuestionOption(optionID){
+	var newAnswer = '<div class="row optionRow" optionId="'+ optionID +'">'+
+    '<div class="col-md-1">'+
+    	'<button type="button" class="btn btn-danger btn-circle deleteAnswerBtn text-right"><i class="fa fa-times"></i></button>'+
+    '</div>'+
+    '<div class="col-md-10">'+
+    	'<input placeholder="Answer" class="titleInputText form-control answerText" type="text" name="answer">'+
+    '</div>'+
+    '<div class="col-md-1">'+
+    	'<span class="correctRadioBtn"><input type="radio" name="ans" value="'+ optionID +'">Correct</span>'+
+    '</div>'+
+'</div>';
+
+$('#questionAnswerBlock').append(newAnswer);	// Inject option
+}
+
+/**
+ * Append a new question option loaded with an optionID.
+ * Pass a blank optionID for an empty option id.
+ */
+function appendMultAnswerOption(optionID){
+	var newAnswer = '<div class="row optionRow" optionId="'+ optionID +'">'+
+    '<div class="col-md-1">'+
+    	'<button type="button" class="btn btn-danger btn-circle deleteAnswerBtn text-right"><i class="fa fa-times"></i></button>'+
+    '</div>'+
+    '<div class="col-md-10">'+
+    	'<input placeholder="Answer" class="titleInputText form-control answerText" type="text" name="answer">'+
+    '</div>'+
+    '<div class="col-md-1">'+
+    	'<span class="correctCheckboxBtn"><input type="checkbox" name="ans" value="'+ optionID +'">Correct</span>'+
+    '</div>'+
+'</div>';
+
+	$('#multAnswerBlock').append(newAnswer);
+}
+
+
+/**
+ * This function will be called when we receive
+ * a response back from the server about
+ * updating question view.
+ * @data Server response JSON
+ * @status If "success", no error occurred
+ */
+function loadQuestionCallback(data, status) {
+	// If we don't get an error back, then process the data
+	if (status == "success") {
+		
+		var result = data.responseJSON;
+		
+		console.log(result);
+		//need to copy this data out for other purposes
+		window.currentQuestionData = result
+		fillInPollPresentationInfo(false);
+		//if(window.presentationWindow != null)
+		//	window.presentationWindow.$(window.presentationWindow.document).trigger("questionChange");
+		
+		var qType = result.type;
+		sessionStorage.setItem("currQuestion", result.questionId);
+		
+		// Make sure no residual data
+		clearQuestionFields();
+
+		// Set title text
+		$('#questionTitleText').val(result.title);
+		// Set question content text
+		//$('#questionContentText').val(result.content);
+		
+		//requires tiny mce editor
+		tinyMCE.activeEditor.setContent(result.content);
+		
+		
+		// MULTIPLE CHOICE
+		if (qType == 0) {
+			// Select questionType = multiple choice
+			$("#multiChoiceBtn").click();
+
+			// Remove default blank answers before inserting loaded ones
+			$('#questionAnswerBlock').empty();
+
+			// Populate answers
+			var answerList = result.options;
+			var optionID;
+			for (var i=0; i<answerList.length; i++) {
+				optionID = answerList[i].optionId;
+				appendQuestionOption(optionID);
+
+				var answerText = answerList[i].text;
+				$('div[optionId="' + optionID + '"]').find('.answerText').val(answerText);	// Fill in option value
+			}
+
+			// Select correct answer radio button
+			var answerToSelect = result.answer;
+			$('#questionAnswerBlock input[type="radio"][value="'+answerToSelect+'"]').prop('checked', true);
+		}
+		// FILL-IN-THE-BLANK
+		else if (qType == 1) {
+			// Select 'Fill-in-blank' question type
+			$("#fillInBlankBtn").click();
+
+			// Fill in the answer
+			$('#fillInBlankAnswer').val(result.answer);
+		}
+		// MULTIPLE ANSWER
+		else if (qType == 2) {
+			// Select questionType = multiple choice
+			$("#multAnswerBtn").click();
+
+			// Remove default blank answers before inserting loaded ones
+			$('#multAnswerBlock').empty();
+
+			// Populate answers
+			var answerList = result.options;
+			var optionID;
+			for (var i=0; i < answerList.length; i++) {
+				optionID = answerList[i].optionId;
+				appendMultAnswerOption(optionID);
+
+				var answerText = answerList[i].text;
+				$('div[optionId="' + optionID + '"]').find('.answerText').val(answerText);
+				
+				var correct = answerList[i].correct;
+				if (correct == 1) {
+					$('#multAnswerBlock input[type="checkbox"][value="'+optionID+'"]').prop('checked', true);
+				}
+			}
+		}
+		// Numerical Question Type
+		else if (qType == 3) {
+			// Select questionType = numerical
+			$('#fillInBlankBtn').click();
+			$("#fillInBlankNumerical").click();
+			
+			var answers = result.answer.split(';');
+			
+			// Fill in the answer
+			$('#fillInBlankAnswerNumerical').val(answers[0]);
+			$('#fillInBlankAnswerNumericalRange').val(answers[1]);
+		}
+		else {
+			alert("Error: Unable to determine question type. UNSUPPORTED.");
+		}
+		
+		// If we should not show the correct answer(s), hide them
+		if (!$('#showAnswerCheckbox').is(":checked")) {
+			$('.correctRadioBtn').hide();
+			$('#fillInBlankAnswer').hide();
+			$('.correctCheckboxBtn').hide();
+		}
+		
+		
+		if(window.currentTab == "review")
+		{
+			$("#reviewTab").click();
+		}
+		
+	}
+	else {
+		alert("Error: Could not load question.");
+	}
+	
+	MathJax.Hub.Queue(["Typeset",MathJax.Hub,"optionTable" ]);
+	MathJax.Hub.Queue(["Typeset",MathJax.Hub,"questionText" ]);
+}
+
+//When click "Delete" button on question option
+$(document).on('click', '.deleteAnswerBtn', function(event) {
+	qType = $('#questionType [class="active"]').val();
+	// MULTIPLE CHOICE
+	if (qType == 0) {
+		// Don't let them delete it if it's the only answer
+		var numElements = $('#questionAnswerBlock').find('.optionRow').length;
+		if (numElements == 1) {
+			$('#questionAnswerBlock').after(generateAlert('Each question must have at least one answer option.', 4));
+			return;
+		}
+
+		// Is 'to-be-deleted' element a correct answer?
+		var isChecked = false;
+		if ($(this).closest('.row').find('input[type=radio]').is(":checked")) {
+			isChecked = true;
+		}
+
+		var optionRow = $(event.currentTarget).closest('.optionRow'); 
+
+		// Remove error div if exists
+		if( $(optionRow).next('div').hasClass('alertDiv'))
+			$(optionRow).next('div').remove();
+		
+		// Delete the answer
+		$(optionRow).remove();
+
+		// Select first answer as correct if they deleted correct answer
+		if (isChecked) {
+			$('#questionAnswerBlock .correctRadioBtn input:first').prop('checked', true);
+		}
+	}
+	// MULTIPLE ANSWER
+	if (qType == 2) {
+		var numElements = $('#multAnswerBlock').find('.optionRow').length;
+		var optionRow = $(this).closest('.optionRow');
+		if (numElements == 1) {
+			$('#multAnswerBlock').after(generateAlert('Each question must have at least one answer option.', 4));
+			return;
+		}
+		optionRow.remove();
+	}
+	
+});
+
+/**
+ * Instructor clicks "Save" on poll management page
+ */
+$(document).on('click', '#saveBtn', function(event) {
+	$(this).blur();
+	
+	$('.alertDiv').remove();	// Clear existing error displays
+	
+	var data = new Object();
+	data.type = parseInt($('#questionType [class="active"]').val());
+	var shouldUpdate = false;
+	var currQuestion = sessionStorage.getItem("currQuestion");
+	if (currQuestion != "null" && currQuestion != undefined && currQuestion != null) {
+		shouldUpdate = true;
+	}
+	
+	var exit = false;	// If should exit (invalid form)
+	data.title = $('#questionTitleText').val().trim();
+	
+	//tiny mce editor version
+	data.content = tinyMCE.activeEditor.getContent()
+	
+	//data.content = $('#questionContentText').val().trim();
+	
+	if(data.title.length > 150){
+		exit = true;	// Not valid
+		$('#questionTitleText').parent().addClass("has-error");	// Makes input red
+		$('#questionTitleText').parent().after(generateAlertNonDismiss('Title cannot be longer than 150 characters, using ' + data.title.length + '/150 characters.', 'col-md-10 row', 4));
+	} else if (data.title == "") {
+		exit = true;	// Not valid
+		$('#questionTitleText').parent().addClass("has-error");	// Makes input red
+		$('#questionTitleText').parent().after(generateAlertNonDismiss('Title cannot be empty.', 'col-md-10 row', 4));
+	} else {
+		$('#questionTitleText').parent().removeClass('has-error');
+	}
+	
+	if(data.content.length > 1000){
+		exit = true;	// Not valid
+		$('#questionContentText').parent().addClass("has-error");	// Makes input red
+		$('#questionContentText').parent().after(generateAlertNonDismiss('Content cannot be longer than 1000 characters, using ' + data.content.length + '/1000 characters.', 'col-md-10 row', 4));
+	} else if (data.content == "") {
+		exit = true;	// Not valid
+		$('#questionContentText').parent().addClass("has-error");	// Makes input red
+		$('#questionContentText').parent().after(generateAlertNonDismiss('Question content cannot be empty.', 'col-md-10 row', 4));
+	} else {
+		$('#questionContentText').parent().removeClass("has-error");
+	}
+	
+	var courseID = sessionStorage.getItem("courseID");	// Sent in request
+
+	// MULTIPLE CHOICE
+	if (data.type == 0) {
+		
+		clearOtherQuestionTypeAnswers(0);
+
+		data.feedback = "";
+		data.value = parseInt("1");
+		data.group = parseInt("-1");
+		data.lectureId = parseInt(sessionStorage.getItem("lectureID"));
+		data.options = [];
+		data.courseId = parseInt(courseID);
+		var numAnswers = 0;
+		var checkedAnswer = -1;
+
+
+		$('#questionAnswerBlock').find('.optionRow').each(function(index, object) {
+			
+			var answer = new Object();
+			
+			numAnswers++;
+			answer.text = $(object).find('.titleInputText').val();
+			
+			if (answer.text == "") {
+				$(object).addClass("has-error");	// Makes input red
+				$(object).after(generateAlertNonDismiss('Option value cannot be blank. Either fill in a value or delete the option.', 'col-md-12', 4));
+				exit = true;
+			} else  if (answer.text.length > 150) {
+				$(object).addClass("has-error");	// Makes input red
+				$(object).after(generateAlertNonDismiss('Option content cannot be longer than 150 characters, using ' + answer.text.length + '/150 characters.', 'col-md-12', 4));
+				exit = true;
+			} else {
+				$(object).removeClass("has-error");
+			}
+			if (shouldUpdate) {
+				answer.optionId = parseInt($(object).attr('optionId'));
+			}
+			data.options.push(answer);
+			if ($(object).find('input[type="radio"]').is(':checked')) {
+				checkedAnswer = numAnswers;
+			}
+		});
+
+		if (checkedAnswer <= 0) {
+			alert("You must select one question as 'correct'!");
+			displayAlertWithTimeout('#saveStatus', generateAlertNonDismiss("You must select one question as 'correct'!", '', 4), 6000);
+			return;	// Nothing important below
+		}
+		if (numAnswers <= 0) {
+			//alert("You must have at least one answer per question!");
+			displayAlertWithTimeout('#saveStatus', generateAlertNonDismiss('You must have at least one answer per question!', '', 4), 6000);
+			return;	// Nothing important below
+			
+			// Do we want below?
+			//exit = true;
+			//$('#questionAnswerBlock').after(generateAlert('Each question must have at least one answer option.', 4));
+		}
+		// Set <option index>
+		data.answer = parseInt(checkedAnswer - 1);
+	}
+	// FILL-IN-THE-BLANK
+	else if (data.type == 1) {
+		
+		// Either FILL-IN-THE-BLANK or Numerical
+		data.type = parseInt($('#fillInBlankSelector [class="active"]').val());
+		
+		clearOtherQuestionTypeAnswers(1);
+		
+		data.feedback = "";
+		data.value = parseInt("1");
+		data.group = parseInt("-1");
+		data.courseId = parseInt(courseID);
+		data.lectureId = parseInt(sessionStorage.getItem("lectureID"));
+		
+		if(data.type == 1)
+			data.answer = $('#fillInBlankAnswer').val();
+		else if(data.type == 3){
+			data.answer = $('#fillInBlankAnswerNumerical').val();
+			
+			if(!$.isNumeric(data.answer)){
+				$('#fillInBlankAnswerNumerical').parent().addClass("has-error");	// Makes input red
+				$('#fillInBlankAnswerNumerical').after(generateAlertNonDismiss('Answer must be a valid number.', "col-md-12", 4));
+				exit = true;
+			}
+			
+			var range = $('#fillInBlankAnswerNumericalRange').val();
+			if(range == ""){
+				$('#fillInBlankAnswerNumericalRange').parent().addClass("has-error");	// Makes input red
+				$('#fillInBlankAnswerNumericalRange').after(generateAlertNonDismiss('Range value cannot be blank.', "col-md-12", 4));
+				exit = true;
+			}
+			else if(!$.isNumeric(range)){
+				$('#fillInBlankAnswerNumericalRange').parent().addClass("has-error");	// Makes input red
+				$('#fillInBlankAnswerNumericalRange').after(generateAlertNonDismiss('Range must be a valid number.', "col-md-12", 4));
+				exit = true;
+			}
+			data.answer += ';' + range;	// Append range to response
+		}
+		else{
+			alert("Error: Unsupported question type!");
+			return;
+		}
+
+		var answerSelector = '#fillInBlankAnswer' + (data.type == 3 ? "Numerical" : "");
+		var errorWidth = (data.type == 3 ? "col-md-12" : "col-md-9");
+		// .parent()
+		if (data.answer == "") {
+			$(answerSelector).parent().addClass("has-error");	// Makes input red
+			$(answerSelector).after(generateAlertNonDismiss('Answer value cannot be blank.', errorWidth, 4));
+			exit = true;
+		} else  if (data.answer.length > 100) {
+			$(answerSelector).parent().addClass("has-error");	// Makes input red
+			$(answerSelector).after(generateAlertNonDismiss('Answer cannot be longer than 100 characters, using ' + data.answer.length + '/100 characters.', errorWidth, 4));
+			exit = true;
+		} else {
+			$(answerSelector).removeClass("has-error");
+		}
+	}
+	// MULTIPLE ANSWER
+	else if (data.type == 2) {
+		clearOtherQuestionTypeAnswers(2);
+
+		data.feedback = "";
+		data.value = parseInt("1");
+		data.group = parseInt("-1");
+		data.lectureId = parseInt(sessionStorage.getItem("lectureID"));
+		data.options = [];
+		data.courseId = parseInt(courseID);
+		var numAnswers = 0;
+
+		$('#multAnswerBlock').find('.optionRow').each(function(index, object) {
+			
+			var answer = new Object();
+			
+			numAnswers++;
+			answer.text = $(object).find('.titleInputText').val();
+			
+			var isCorrect = $(object).find('input[type="checkbox"]').is(':checked');
+			if (isCorrect) {
+				answer.correct = 1;
+			}
+			else {
+				answer.correct = 0;
+			}
+			
+			if (answer.text == "") {
+				$(object).addClass("has-error");	// Makes input red
+				$(object).after(generateAlertNonDismiss('Option value cannot be blank. Either fill in a value or delete the option.', 'col-md-12', 4));
+				exit = true;
+			} 
+			else  if (answer.text.length > 100) {
+				$(object).addClass("has-error");	// Makes input red
+				$(object).after(generateAlertNonDismiss('Option content cannot be longer than 100 characters, using ' + answer.text.length + '/100 characters.', 'col-md-12', 4));
+				exit = true;
+			} 
+			else {
+				$(object).removeClass("has-error");
+			}
+			
+			if (shouldUpdate) {
+				answer.optionId = parseInt($(object).attr('optionId'));
+			}
+
+			data.options.push(answer);
+			
+		});
+
+		if (numAnswers <= 0) {
+			exit = true;
+			$('#multAnswerBlock').after(generateAlert('Each question must have at least one answer option.', 4));
+		}
+	}
+	// UNSUPPORTED
+	else {
+		alert("Error: Unsupported question type!");
+		return;
+	}
+	
+	// Don't submit data yet?
+	if (exit) {
+		displayAlertWithTimeout('#saveStatus', generateAlertNonDismiss('Errors on form, see alerts above.', '', 4), 6000);
+		return;
+	}
+
+	// UPDATE
+	if (shouldUpdate) {
+		var questionID = sessionStorage.getItem("currQuestion");
+		var url = sessionStorage.getItem("baseURL") + "/question/" + questionID + "/update";
+		$.ajax({
+			  method: "PUT",
+			  url: url,
+			  contentType: "application/json",
+			  data: JSON.stringify(data),
+			  complete: updateQuestionCallback
+		});
+	}
+	// NEW QUESTION
+	else {
+		var url = sessionStorage.getItem("baseURL") + "/question/create";
+		$.ajax({
+			  method: "POST",
+			  url: url,
+			  contentType: "application/json",
+			  data: JSON.stringify(data),
+			  complete: saveQuestionCallback
+		});
+	}
+	
+	//call the load question callback
+	
+});
+
+
+/**
+ * This function will be called when we receive
+ * a response back from the server about
+ * saving the question.
+ * @data Server response JSON
+ * @status If "success", no error occurred
+ */
+function saveQuestionCallback(data, status) {
+	// If we don't get an error back, then process the data
+	if (status == "success") {
+		var data = data.responseJSON;
+		var questionID = data.questionId;
+		var title = data.title;
+		var version = data.version;
+		var type = data.type;
+		var optionIDs = data.optionIds;
+		
+		$('#noQuestionsWell').remove();
+		
+		appendSidebarQuestion(questionID, title, version);	// Add to sidebar questions
+		
+		updateOptionIDs(type, optionIDs);
+		
+		sessionStorage.setItem("currQuestion", questionID);	// Set as active question
+		$('a[questionid='+questionID+']').addClass('active');
+		
+		// Scroll to newly added item
+		$('#side-menu').animate({
+            scrollTop: $('a[questionid='+questionID+']').offset().top
+        }, 2000)
+		
+		displayAlertWithTimeout('#saveStatus', generateAlertNonDismiss('Saved', '', 1), 3000);
+	}
+	else {
+		$('#saveStatus').after('<div class="col-md-10 text-center">'
+				+'<div class="alert alert-danger">'
+				+'<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>'
+				+'Save Failed</div> </div>');
+	}
+}
+
+/**
+ * Called when we receive a response from the server
+ * about updating a question.
+ * @param data
+ * @param status
+ */
+function updateQuestionCallback(data, status) {
+	if (status == "success") {
+		
+		//console.log(data);
+		var values = data.responseJSON;
+		var type = values.type;
+		var optionIDs = values.optionIds;
+		var questionID = values.questionID;
+		
+		$('[questionid="' + values.questionID + '"]').find('.title').text( trimText(values.title, 22) );	// Update question title
+		updateOptionIDs(type, optionIDs);
+
+		
+		displayAlertWithTimeout('#saveStatus', generateAlertNonDismiss('Saved', '', 1), 3000);
+		
+		//loadQuestionCallback(data,status)
+		var url = sessionStorage.getItem("baseURL") + "/question/" + questionID;
+		$.ajax({
+			  method: "GET",
+			  url: url,
+			  complete: loadQuestionCallback
+		});
+	}
+	else {
+		$('#saveStatus').after('<div class="col-md-10 text-center">'
+				+'<div class="alert alert-danger">'
+				+'<a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>'
+				+'Save Failed</div> </div>');
+	}
+	
+	
+}
+
+/**
+ * Call when you want to load in a new question.
+ * Clears all the fields. Prevents residual data when loading new question.
+ */
+function clearQuestionFields() {
+	$('#questionTitleText').val('');
+	//$('#questionContentText').val('');
+	//requires tiny mce editor
+	tinyMCE.activeEditor.setContent('');
+	$('#fillInBlankAnswer').val('');
+	clearOtherQuestionTypeAnswers(-1); // Clears all question types
+}
+
+
+///////////////////////////////////////////////////////////////////////////////////////
+/////////////////Presentation tab//////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////
+
+$(document).on('click', '#presentTab', function(event) {
+	window.currentTab = "present";
+	fillInPollPresentationInfo(false,null);
+});
+
+/**
+ * Clicking the minus font
+ */
+$(document).on('click', '#minusFont', function(event) {
+
+
+	if(window.presentationFontSize > 0)
+	{
+		var size = sessionStorage.getItem("presentationFontSize")
+		var newSize = (+size) - (+1);
+			
+		sessionStorage.setItem("presentationFontSize",newSize)
+		
+		window.presentationFontSize = sessionStorage.getItem("presentationFontSize")
+
+		redrawFontSizeButtonsAndPresentationFonts();
+	}
+	
+	if(window.presentationFontSize > 0)
+	{
+		$('#minusFont').show();
+	}
+	else if(window.presentationFontSize == 0)
+	{
+		$('#minusFont').hide();
+	}
+	
+	if(window.presentationFontSize < 6)
+	{
+		$('#plusFont').show();
+	}
+	else if(window.presentationFontSize == 6)
+	{
+		$('#plusFont').hide();
+	}
+
+});
+
+/**
+ * Clicking the plus font
+ */
+$(document).on('click', '#plusFont', function(event) {
+
+	if(window.presentationFontSize < 6)
+	{
+		var size = sessionStorage.getItem("presentationFontSize")
+		var newSize = (+size) + (+1);
+			
+		sessionStorage.setItem("presentationFontSize",newSize)
+		
+		window.presentationFontSize = sessionStorage.getItem("presentationFontSize")
+		
+		redrawFontSizeButtonsAndPresentationFonts();
+	}
+	
+	if(window.presentationFontSize > 0)
+	{
+		$('#minusFont').show();
+	}
+	else if(window.presentationFontSize == 0)
+	{
+		$('#minusFont').hide();
+	}
+	
+	if(window.presentationFontSize < 6)
+	{
+		$('#plusFont').show();
+	}
+	else if(window.presentationFontSize == 6)
+	{
+		$('#plusFont').hide();
+	}
+	
+});
+
+$(document).on('click', '#presentationModeBtn', function(event) {
+	window.presentationWindow = window.open("presentation.html", 'Turing Point - Presentation Mode');
+});
+
+///////////////////////////////////////////////////////////////////////////////////////
+/////////////////Review tab////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Toggle "Show Answer" check-box
+ */
+$(document).on('click', '#reviewTab', function(event) {
+	//console.log("on Review tab")
+	window.currentTab = "review"
+	window.shownQuestionID = window.resultQuestionID
+	selectQuestion(window.resultQuestionID);
+	
+});
+
+/**
+ * Clicking the refresh answers button
+ */
+$(document).on('click', '#refreshResultsBtn', function(event) {
+	window.currentTab = "review"
+	window.shownQuestionID = window.resultQuestionID
+	selectQuestion(window.resultQuestionID)
+});
+
+/**
+ * Clears HTML data entered for question types other than the given type.
+ * Does not clear the "Title" or "Content".
+ * @type -1 -  Clears all types.
+ * 		 0  -  Multiple Choice
+ * 		 1  -  Fill-In-Blank
+ * 		 2  -  Multiple Answer
+ */
+function clearOtherQuestionTypeAnswers(type) {
+	// Multiple Choice
+	if (type != 0) {
+		$('#questionAnswerBlock').empty(); // Clear all options
+		for (var i=0; i<4; i++)	{
+			appendQuestionOption("-1"); // Append 4 empty options
+		}
+		$('.correctRadioBtn input[type="radio"]:first').prop("checked", true); // Check first answer as correct
+	}
+	// Fill-In-Blank
+	if (type != 1) {
+		$('#fillInBlankAnswer').val('');
+	}
+	// Multiple Answer
+	if (type != 2) {
+		$('#multAnswerBlock').empty();
+		for (var i=0; i<4; i++)	{
+			appendMultAnswerOption("-1");
+		}
+	}
+}
+
+/**
+ * Places a message in sidebar telling the user that there are no questions.
+ */
+function appendNoQuestionsMessage() {
+	var noQuestionsHTML = '<div class="well well-lg" id="noQuestionsWell">No questions for this course, create one by filling out the questions form.</div>'
+	$("#side-menu").append(noQuestionsHTML);
+}
+
+/**
+ * Updates the optionIds.
+ * Call after you create a new question or update a question so the optionIds stay up-to-date.
+ * @param type
+ * @param optionIDs
+ */
+function updateOptionIDs(type, optionIDs) {
+	// MULTIPLE CHOICE
+	if (type == 0) {
+		 $('#questionAnswerBlock').find('.optionRow').each(function(index, object) {
+			 $(object).attr('optionid', optionIDs[index]);
+			 $(object).find('.correctRadioBtn input[type="radio"]').val(optionIDs[index]);
+		 });
+	}
+	// FILL-IN-THE-BLANK
+	else if (type == 1) {
+		
+	}
+	// MULTIPLE ANSWER
+	else if (type == 2) {
+		$('#multAnswerBlock').find('.optionRow').each(function(index, object) {
+			$(object).attr('optionid', optionIDs[index]);
+			$(object).find('.correctCheckboxBtn input[type="checkbox"]').val(optionIDs[index]);
+		 });
+	}
+	// UNSUPPORTED
+	else {
+		
+	}
+}
+
+
+/**
+ * Prevent reloading page when a tooltip is clicked
+ */
+$(document).on('click', '[data-toggle="tooltip"]', function(event) {
+	event.preventDefault();
+});

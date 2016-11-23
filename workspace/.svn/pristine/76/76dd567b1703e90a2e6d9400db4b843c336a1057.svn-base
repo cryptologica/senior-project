@@ -1,0 +1,184 @@
+package com.turingpoint.dbmodel.db.mapping;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
+import org.hibernate.criterion.Restrictions;
+import org.pojomatic.Pojomatic;
+import org.pojomatic.annotations.AutoProperty;
+
+import com.turingpoint.dbmodel.db.mapping.HibernateUtil.DBAction;
+import com.turingpoint.dbmodel.model.QuestionType;
+
+
+@Entity
+@Table
+@AutoProperty
+public class Question extends HibernateUtil {
+
+	@Id
+	@GenericGenerator(name="gen",strategy="increment")
+	@GeneratedValue(generator="gen")
+	private Long questionId;
+	
+	@Column
+	private Long lectureId;
+	
+	@Column
+	@Enumerated(EnumType.ORDINAL)
+	private QuestionType type;
+	
+	@Column
+	private String title;
+
+	@Column
+	private String question;
+	
+	@Column
+	private int version;
+
+	@Column 
+	private int points;
+	
+	@Column
+	private String feedback;
+	
+	@Column(columnDefinition = "TINYINT")
+	@Type(type = "org.hibernate.type.NumericBooleanType")
+	private boolean isQuestionBank;
+	
+	public int getPoints() {
+		return points;
+	}
+
+	public Long getQuestionId() {
+		return questionId;
+	}
+
+	public Long getLectureId() {
+		return lectureId;
+	}
+
+	public QuestionType getType() {
+		return type;
+	}
+
+	public String getTitle() {
+		return title;
+	}
+
+	public String getQuestion() {
+		return question;
+	}
+
+	public int getVersion() {
+		return version;
+	}
+	
+	public boolean getIsQuestionBank() {
+		return isQuestionBank;
+	}
+
+	public void setQuestionId(Long questionId) {
+		this.questionId = questionId;
+	}
+
+	public void setLectureId(Long lectureId) {
+		this.lectureId = lectureId;
+	}
+
+	public void setType(QuestionType type) {
+		this.type = type;
+	}
+
+	public void setTitle(String title) {
+		this.title = title;
+	}
+
+	public void setQuestion(String question) {
+		this.question = question;
+	}
+
+	public void setVersion(int version) {
+		this.version = version;
+	}
+
+	public void setPoints(int points) {
+		this.points = points;
+	}
+	
+	public void setIsQuestionBank(boolean isQuestionBank) {
+		this.isQuestionBank = isQuestionBank;
+	}
+
+	public static Question getQuestion(Long questionId) {
+		return getQuestionCommon(questionId, false);
+	}
+	
+	public String getFeedback() {
+		return this.feedback;
+	}
+	
+	public void setFeedback(String feedback) {
+		this.feedback = feedback;
+	}
+	
+	/**
+	 * Created separate method so that we can ensure that the question is actually part of the question bank
+	 * @param questionId
+	 * @return
+	 */
+	public static Question getQuestionBankQuestion(Long questionId) {
+		return getQuestionCommon(questionId, true);
+		}
+	
+	private static Question getQuestionCommon(Long questionId, boolean isQuestionBank){
+	      Session session = null;
+	      try{
+	        session = getSession();
+	        Criteria criteria = session.createCriteria(Question.class);
+	        criteria.add(Restrictions.eq("isQuestionBank", isQuestionBank));
+	        return (Question) criteria.add(Restrictions.eq("questionId", questionId)).uniqueResult();
+	      } finally {
+	        session.close();
+	      }
+	}
+	
+	public Question save(){
+		HibernateUtil.save(this);
+		return this;
+	}
+	
+	public Question update(){
+		HibernateUtil.performAction(DBAction.UPDATE, this);
+		return this;
+	}
+	
+	public void delete(){
+		HibernateUtil.performAction(DBAction.DELETE, this);
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		return Pojomatic.equals(this, o);
+	}
+
+	@Override
+	public int hashCode() {
+		return Pojomatic.hashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return Pojomatic.toString(this);
+	}
+}

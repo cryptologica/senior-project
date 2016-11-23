@@ -1,0 +1,188 @@
+// function to start when the page is loaded
+//window.onload = initialize();
+$(document).ready(initialize());
+
+var courseNames = [];
+var courses = [];
+var limit = 0;
+var currentId = -1;
+var index = -1;
+var userid;
+var baseURL;
+
+
+//Event hander when the enter key is pressed
+$(document).keydown(function (e) {
+	 var key = e.keyCode;
+	 if(key == 13)  // the enter key code
+	  {
+		 $('#searchButton').click();
+	    return false;  
+	  }
+	}); 
+
+//event handler for searching for a class
+$(document).on('click', '#searchButton', function(event)
+{
+	event.preventDefault();
+	//show load modal, wait until all variables are in place
+	$('#myModal').modal('show');
+	
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/courses",
+	    success: searchClass,
+	    error: searchClass
+	    });
+	
+
+});
+
+//Click event for checking class
+$(document).on('click', '#classLink', function(event)
+{
+	event.preventDefault();
+
+	//show load modal, wait until all variables are in place
+	//$('#myModal').modal('show');
+	document.getElementById("formError").innerHTML = "";
+	//Get variables and add them to HTML
+	index = event.currentTarget.name;
+
+	var addHTML = '<h1 class = "page-header" id="className">CS 1410</h1><h3 id = "description">Description will be placed here</h3><br><br><button type="button" id = "joinButton" class="btn btn-primary">Join</button><br><br><br><br>';
+	document.getElementById("content").innerHTML = addHTML;
+	
+	var title = courses[index].name;
+	var fName = courses[index].instFName;
+	var lName = courses[index].instLName;
+	var description = courses[index].description;
+	currentId = courses[index].courseId;
+
+	//implement variables to HTML
+	document.getElementById("className").innerHTML = title;
+	//document.getElementById("instructorName").innerHTML = fName + " " + lName;
+	document.getElementById("description").innerHTML = description;
+	$('html, body').animate({scrollTop:$(document).height()}, 'slow');
+	//hide load modal
+	//$('#myModal').modal('hide');
+});
+
+//event handler for searching for a class
+$(document).on('click', '#joinButton', function(event)
+{
+	event.preventDefault();
+	//show load modal, wait until all variables are in place
+	$('#myModal').modal('show');
+
+	var q = {"userId" : userid};
+	$.ajax({
+	    type: 'POST',
+	    url: 	baseURL +"/courses/" + currentId + "/join",
+	    data: JSON.stringify(q),
+	    success: addCourseCallback,
+	    error: addCourseCallback,
+	    contentType: "application/json",
+	    dataType: 'json'
+	});
+	
+});
+
+function initialize()
+{
+	baseURL = sessionStorage.getItem("baseURL");
+	userid = parseInt(sessionStorage.getItem('userID'));
+	$.ajaxSetup({
+	    cache: false
+	});
+	$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/courses",
+		    success: getClass,
+		    error: getClass
+		    });
+};
+
+function addCourseCallback(result, error)
+{
+	console.log(result);
+	if(error == "success")
+	{
+		$('#formError').html( generateAlert("Class was successfully added.", 1) );
+	}
+	else
+	{
+		$('#formError').html( generateAlert("Failed to add Class.", 4) );
+	}
+	//hide load modal
+	$('#myModal').modal('hide');
+};
+
+function getClass(result, error)
+{
+	
+	$('#myModal').modal('show');
+	if(error == "success")
+	{
+		
+
+		courses = result.Courses;
+		var courseNames = [];
+		for(var i = 0; i < courses.length; i++)
+		{
+			courseNames.push(courses[i].name);
+		}
+		$("#searchButton").click();
+	}
+	else
+	{
+		$('#formError').html( generateAlert("No classes exist in the system.", 2) );
+	}
+	
+	$('#myModal').modal('hide');
+};
+
+function searchClass(result, error)
+{
+	
+	
+	if(error == "success")
+	{
+
+		courses = result.Courses;
+		var courseNames = [];
+		for(var i = 0; i < courses.length; i++)
+		{
+			courseNames.push(courses[i].name);
+		}
+		
+		document.getElementById("formError").innerHTML = "";
+		document.getElementById("classSearch").innerHTML = "";
+		$("#classSearch").empty();
+		limit = 0;
+		
+		//get text from search box
+		var text = document.getElementById("searchText").value.toLowerCase();
+		text = text.replace(/\s/g,'');
+
+		for(var i = 0; i< courseNames.length && limit < 10; i++)
+		{
+			var name = courseNames[i].toLowerCase();
+			name = name.replace(/\s/g,'');
+			if(name.indexOf(text) !== -1)
+			{
+				limit++;
+				$("#classSearch").append('<li class="list-group-item"><a href="#Q1" name="'+i+'" id = "classLink"><span class="glyphicon glyphicon-plus" style="color:green"></span>'+courseNames[i]+'</a></li>');
+			}
+		}
+		
+		$('#formError').html( generateAlert("If you do not see your class, try refining your search.", 2) );
+	}
+	else
+	{
+		$('#formError').html( generateAlert("No classes exist in the system.", 2) );
+	}
+	
+	$('#myModal').modal('hide');
+};

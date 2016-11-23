@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<!--  Start - Should be present on top of head on all pages -->
+<script src="../bower_components/jquery/jquery-latest.min.js"
+	type="text/javascript"></script>
+
+<!-- JQuery cookie manager - https://github.com/js-cookie/js-cookie -->
+<script src="../js/cookieMonster.js"></script>
+
+<!-- Main js used to inject content used throughout the site, and manage session vars -->
+<script src="../js/main.js" type="text/javascript"></script>
+
+<!--  End - Should be present on top of head on all pages -->
+
+<!-- Font Awesome Plugin -->
+<link href="../css/font-awesome.css" rel="stylesheet" type="text/css">
+
+<!-- jQuery -->
+<script src="../bower_components/jquery/dist/jquery.min.js"></script>
+
+<!-- Custom (Formerly Injected) -->
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+
+<title>Turing Point - Clicker Replacement</title>
+
+<!-- Bootstrap Core CSS -->
+<link href="../bower_components/bootstrap/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+
+<!-- MetisMenu CSS -->
+<link href="../bower_components/metisMenu/dist/metisMenu.min.css"
+	rel="stylesheet">
+
+<!-- Timeline CSS -->
+<link href="../dist/css/timeline.css" rel="stylesheet">
+
+<!-- Custom CSS -->
+<link href="../dist/css/sb-admin-2.css" rel="stylesheet">
+<link href="../css/bootstrap-social.css" rel="stylesheet" type="text/css">
+
+<!-- Custom Fonts -->
+<link href="../bower_components/font-awesome/css/font-awesome.min.css"
+	rel="stylesheet" type="text/css">
+
+<!-- Our CSS -->
+<link href="../css/style.css" rel="stylesheet" type="text/css">
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+
+<!-- Metis Menu Plugin JavaScript -->
+<script src="../bower_components/metisMenu/dist/metisMenu.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../dist/js/sb-admin-2.js"></script>
+
+<!-- Favorite Icons -->
+<link rel="icon" type="image/png" href="../img/favicon-32x32.png"
+	sizes="32x32" />
+<link rel="icon" type="image/png" href="../img/favicon-16x16.png"
+	sizes="16x16" />
+
+
+</head>
+
+<body>
+
+	<div id="header"></div>
+
+	<!-- Page Content -->
+	<div class="container" style="background-color: white;">
+
+		<!-- Introduction Row -->
+		<div class="row">
+			<div class="col-lg-12">
+				<h1 class="page-header">
+					About the Turing Point Team <small>It's Nice to Meet You!</small>
+				</h1>
+				<font size="3"><p>Turing Point is an educational web
+						application that provides students and instructors with an
+						effective, convenient, and affordable way to take and administer
+						classroom polls and quizzes. Turing Point has been developed from
+						the ground up, based on feedback from University of Utah
+						instructors and students in order to create a set of tools that
+						allow for an unparalleled learning experience. The Turing Point
+						web application is designed for use on Desktop and Mobile
+						platforms so that users can quickly and easily navigate and access
+						information effectively no matter which device they are using. Turing Point
+						leverages the fact that most students already have a mobile device
+						and therefore will not be required to purchase 3rd party polling
+						hardware. This ensures it will be more affordable for students than other
+						polling solutions. The Turing Point system provides rapid feedback to both
+						students and instructors and enables them to review, analyze, and
+						explore results in ways current systems do not. This
+						promotes an interactive learning environment where students remain
+						engaged and Instructors remain informed of their student’s
+						performance.</p></font>
+			</div>
+		</div>
+
+		<!-- Team Members Row -->
+		<div class="row">
+			<div class="col-lg-12">
+				<h2 class="page-header">The Turing Point Team</h2>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col-lg-6 col-md-6">
+				<img class="img-circle img-responsive img-center imageCenter"
+					src="../img/team/jt.jpg" alt="">
+				<h3 class="text-center">
+					JT Newsome <small></small>
+				</h3>
+				<h4><b>Background</b></h4>
+				<blockquote>
+					<p>Background here...</p>
+				</blockquote>
+
+				<h4><b>Primary Project Contributions</b></h4>
+				<blockquote>
+					<p>List them here...</p>
+				</blockquote>
+			</div>
+
+			<div class="col-lg-6 col-md-6">
+				<img class="img-circle img-responsive img-center imageCenter"
+					src="../img/team/scott.jpg" alt="">
+				<h3 class="text-center">
+					Scott Hadley <small></small>
+				</h3>
+				<h4><b>Background</b></h4>
+				<blockquote>
+					<p>Scott has a background in Graphic Design and 3D Animation, he was seeking a
+					more technically-challenging and in-demand career so he began pursuing a Bachelor's Degree in Computer
+					Science at the University of Utah in 2011. Scott has been working for a major online retailer
+					since 2012 and currently builds and maintains website testing and automation tools written in Java, builds 
+					web applications and REST services, and performs performance testing on production applications.</p>
+				</blockquote>
+
+				<h4><b>Primary Project Contributions</b></h4>
+				<blockquote>
+					<p><ul>
+						<li>Hibernate ORM database mappings.</li>
+						<li>Configured MySQL Database, built the Database Schema, and wrote Database backup scripts.</li>
+						<li>Configured Amazon Web Services (AWS) servers for web and Database hosting.</li>
+						<li>Configured our server to utilize secure HTTPS communication.</li>
+						<li>Wrote scripts and cron jobs for server deploys, maintenance, and management.</li>
+						<li>Performed initial project UI redesign using the Bootstrap framework.</li>
+						<li>Designed the team logo.</li>
+						<li>Created and optimized several REST service endpoints on the server.</li>
+						<li>Built the Navigation bar, Registration Page and Account Verification, Instructor's Homepage, 
+						Login Page, Manage Lectures Page, Question Bank, Question Import Feature, 
+						Student Polls Page Auto-Update Questions Feature.</li>
+						<li>Contributed heavily to the Instructor's polls page design and implementation.</li>
+					</ul></p>
+					
+					<a href="https://www.linkedin.com/pub/scott-hadley/19/5aa/97b" class="btn btn-block btn-social btn-linkedin">
+                                <i class="fa fa-linkedin"></i> Connect with Scott on LinkedIn
+                    </a>
+				</blockquote>
+			</div>
+		</div>
+		<div class="row">
+
+			<div class="col-lg-6 col-md-6">
+				<img class="img-circle img-responsive img-center imageCenter"
+					src="../img/team/tony.jpg" alt="">
+				<h3 class="text-center">
+					Tony Niven <small></small>
+				</h3>
+				<h4><b>Background</b></h4>
+				<blockquote>
+					<p>
+						Tony has always enjoyed computing and from an early age, was in the presence of computers regularly.
+						Though his interaction with computers now heavily involves the creation of computer software, he has
+						incorporated computing technology into some of his other hobbies, noteably writing and art in various forms.
+					</p>
+					<p>
+						Tony is currently employed as a developer for DriverTech LLC where he is responsible for the creation
+						and mantinence of embedded device software. In addition to application development he has taken a 
+						leading role in the creation of the automated testing frameworks for web and embedded devices in use 
+						by the company today.
+					</p>
+					<p>
+						Tony's computer science education and work experience spans a large variety of languages, development
+						techniques and purposes. These range from the creation of learning algorithms to the creation of web
+						applications like Turing Point, both in team environments and alone.
+					</p>
+				</blockquote>
+
+				<h4><b>Primary Project Contributions</b></h4>
+				<blockquote>
+					<p>
+						Tony worked to develop the REST api for the server. He also worked to set up the deployment environment for Turing Point and
+						served as a group facilitator and coordinator for meetings or presentations. Tony was primarily responsible for
+						the creation of the presentation mode system for instructors and the results system used in the application.
+					</p>
+					<p>
+						Additionally, Tony was responsible for the student management system which allows instructors to
+						explore the results of their students on an individual level while also providing key information
+						to be used in integrating student results into learning management scoring systems.
+					</p>
+					<p>
+						With applied knowledge in information visualization, Tony created the interactive charts used in 
+						the application and all results in the system rely on the results services created by this developer. 
+						He was responsible for the creation of the tagging system and tag explorer which allow instructors 
+						and students alike to visualize results and get a better grasp of class performances on various topics.
+					</p>
+
+				</blockquote>
+			</div>
+
+			<div class="col-lg-6 col-md-6">
+				<img class="img-circle img-responsive img-center imageCenter"
+					src="../img/team/sean.jpg" alt="">
+				<h3 class="text-center">
+					Sean O'Connor <small></small>
+				</h3>
+				<h4><b>Background</b></h4>
+				<blockquote>
+					<p>Background here...</p>
+				</blockquote>
+
+				<h4><b>Primary Project Contributions</b></h4>
+				<blockquote>
+					<p>List them here...</p>
+				</blockquote>
+			</div>
+
+		</div>
+	</div>
+</body>
+
+</html>

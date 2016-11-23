@@ -1,0 +1,117 @@
+/* Quiz Page Styling */
+
+#wrapper {	/* Wrapper of navigation and main page */
+	width: 100%;
+    margin: auto;
+}
+
+#leftNav {
+	width: 250px;
+	height: 100%;
+    /*background: #5593CB;*/
+    background: #426e95;
+    float: left;
+    border-right: black solid 2px;
+}
+
+#mainPage {
+	margin-left: 250px;
+    height: 100%;
+    background: #f9f9f9;
+    padding: 10px;
+    color: black;
+    padding-left: 30px;
+    padding: 15px;
+}
+
+#lectureName {
+	color: white;
+}
+
+#editPane {
+	min-width: 460px;
+	width: 75%;
+	background-color: #f9f9f9;
+	border-color: #053D70;
+	color: black;
+}
+
+#editPane div {
+	border-color: #053D70;
+}
+
+.titleInputText {
+	width: 100%;
+	margin: 3px;
+}
+
+.block
+{
+    display: inline-block;
+}
+
+.titleInputText
+{
+    font-size: 23pt;
+}
+
+.questionAnswerBlock
+{
+    border-style: solid;
+    border-width: 1px;
+    padding: 10px;
+
+}
+
+.border
+{
+    border-style: solid;
+    border-width: 1px;
+    border-radius: 3px;
+}
+
+.padded
+{
+    padding: 8px;
+}
+
+.floating
+{
+	float: left
+}
+
+.img-swap {
+	width: 32px;
+	height: 32px;
+}
+
+#newQuestionBtn {
+	margin-left: 44px;
+}
+
+.playBtnGroup {
+	margin-bottom: 5px;
+	background-color: #054279;
+	border-radius: 3px;
+	/*border: 1px solid #053D70;*/
+	border: none;
+}
+
+#resultsGroups {
+	margin: 10px;
+	border-color: #053D70;
+	background-color: #eeeeee;
+	border-radius: 3px;
+	text-align: center;
+}
+
+.btn-square{
+	width: 31px;
+	height: 31px;
+}
+
+/* Stop symbol on stop buttons */
+.glyphicon-stop{
+	right: 5px;
+	top: -0.5px;
+}

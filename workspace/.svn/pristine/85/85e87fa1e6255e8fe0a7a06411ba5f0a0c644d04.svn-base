@@ -1,0 +1,96 @@
+package com.turingpoint.dbmodel.db.mapping;
+
+import javax.persistence.Column;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.Id;
+import javax.persistence.Table;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.criterion.Restrictions;
+import org.pojomatic.Pojomatic;
+import org.pojomatic.annotations.AutoProperty;
+
+@Entity
+@Table
+@AutoProperty
+public class Lecture extends HibernateUtil {
+
+	@Id
+	@GenericGenerator(name="gen",strategy="increment")
+	@GeneratedValue(generator="gen")
+	private Long lectureId;
+
+	@Column
+	private Long classId;
+
+	@Column
+	private String name;
+	
+
+	public Long getLectureId() {
+		return lectureId;
+	}
+
+	public Long getClassId() {
+		return classId;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setLectureId(Long lectureId) {
+		this.lectureId = lectureId;
+	}
+
+	public void setClassId(Long classId) {
+		this.classId = classId;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+
+	public static Lecture getLecture(Long lectureId) {
+      Session session = null;
+      try{
+        session = getSession();
+        Criteria criteria = session.createCriteria(Lecture.class);
+        return (Lecture) criteria.add(Restrictions.eq("lectureId", lectureId)).uniqueResult();
+      } finally {
+        session.close();
+      }
+	}
+	
+	public Lecture save(){
+		HibernateUtil.save(this);
+		return this;
+	}
+	
+	public void delete(){
+		HibernateUtil.delete(this);
+	}
+	
+	public Lecture update(){
+		HibernateUtil.performAction(DBAction.UPDATE, this);
+		return this;
+	}
+	
+	@Override
+	public boolean equals(Object o) {
+		return Pojomatic.equals(this, o);
+	}
+
+	@Override
+	public int hashCode() {
+		return Pojomatic.hashCode(this);
+	}
+
+	@Override
+	public String toString() {
+		return Pojomatic.toString(this);
+	}
+}

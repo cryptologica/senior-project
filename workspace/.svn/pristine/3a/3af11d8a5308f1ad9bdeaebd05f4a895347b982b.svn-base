@@ -1,0 +1,467 @@
+/**
+ * Instructor homepage js
+ */
+
+$(document).ready(function() {
+	
+	// Check to see if login error is displayed
+	var msg = $.query.get('msg');
+	if(msg != null){
+		if(msg == 'loggedin'){
+			$("#courses").append('<br>' + generateAlert("You are already logged in. You may <a id='loginLogout' href='#'>logout</a> if you want to get back to the login screen.", 2));
+		}
+	}
+	
+	var role = sessionStorage.getItem('role');
+	var userID = sessionStorage.getItem('userID');
+	
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/users/" + userID + "/courses";
+
+	// Ask the server for a list of courses available for current user
+	$.getJSON(url, courseListCallback);
+	
+});
+
+/**
+ * Instructor - Manage polls button clicked
+ */
+$(document).on('click', '.managePollsBtn', function(event) {
+	var courseID = ($(event.currentTarget).parent()).attr('id');
+	sessionStorage.setItem("courseID", courseID);
+	loadPage("managepolls");
+});
+
+/**
+ * Difference course selected on homepage
+ */
+$(document).on('change', '#courseSelect', function(event) {
+	var courseID = $('#courseSelect option:selected').attr('courseid');	// Selected course
+	
+	// Retrieve list of courses
+	var courses =  JSON.parse(localStorage.getItem("courses"));
+
+	// Generate and add the HTML to the page
+	var courseHTML = getHomepageHTMLByCourseID(courses, courseID);
+	$("#courseContent").empty();
+	$("#courseContent").html(courseHTML);
+});
+
+
+
+/**
+ * Click "New Course" button
+ */
+$(document).on('click', '#newCourse', function(event) {
+	$('#resetForm').click();	// Reset the form
+});
+
+/**
+ * Click "Submit" button on update course modal form
+ */
+$(document).on('click', '#formUpdateSubmit', function(event) {
+	event.preventDefault();
+	
+	var valid = true;
+	var courseName = $('#courseUpdateNameInput').val().trim();
+	var courseDescr = $('#courseUpdateDescInput').val().trim();
+	// Make sure something was entered
+	if (courseName.length <= 0 || courseDescr.length <= 0) {
+		valid = false;
+		$('#formUpdateError').html( generateAlert("One or more fields were not set", 3) );
+	}
+	if (courseName.length > 100) {
+		valid = false;
+		$('#formUpdateError').html( generateAlert("Course name exceeded 100 character limit", 4) );
+	}
+	if (courseDescr.length > 400) {
+		valid = false;
+		$('#formUpdateError').html( generateAlert("Course description exceeded 400 character limit", 4) );
+	}
+	if (valid) {
+		var courseID = $('#courseSelect option:selected').attr('courseid');	// Selected course
+		var url = sessionStorage.getItem("baseURL") + "/courses/" + courseID + "/update";
+		var data = JSON.stringify({
+				"name": courseName,
+				"description": courseDescr,
+		});
+		$.ajax({
+		    type: 'PUT',
+		    url: 	url,
+		    data: data,
+		    contentType: "application/json",
+		    dataType: 'json',
+		    success: function(data, status){
+		    	// If we don't get an error back, then process the data
+		    	if (status == "success") {
+			    	$("#updateModal").modal("hide");
+		    		
+		    		// Extract the courseId
+		    		var courseID = data.courseId;
+		    		var courseName = data.name;
+		    		var courseDescr = data.description;
+
+		    		$('[courseId="' + courseID + '"]').text(courseName);	// Update course dropdown
+		    		
+		    		updateCourseInStorage(data);
+			    	
+			    	// Trigger select to update page
+			    	$('#courseSelect option:last').attr('selected', 'selected');
+			    	$('#courseSelect').trigger("change"); // Switch to newly added course (last one in list)
+		    	}
+		    	else {
+		    		alert("There was an error adding the course.");
+		    	}
+		    }
+		});
+	}
+});
+
+/**
+ * Click "Submit" button on create new course modal form
+ */
+$(document).on('click', '#formSubmit', function(event) {
+	event.preventDefault();
+	
+	var valid = true;
+	var courseName = $('#courseNameInput').val().trim();
+	var courseDescr = $('#courseDescInput').val().trim();
+	// Make sure something was entered
+	if (courseName.length <= 0 || courseDescr.length <= 0) {
+		valid = false;
+		$('#formError').html( generateAlert("One or more fields were not set", 3) );
+	}
+	if (courseName.length > 100) {
+		valid = false;
+		$('#formError').html( generateAlert("Course name exceeded 100 character limit", 4) );
+	}
+	if (courseDescr.length > 400) {
+		valid = false;
+		$('#formError').html( generateAlert("Course description exceeded 400 character limit", 4) );
+	}
+	if (valid) {
+		var url = sessionStorage.getItem("baseURL") + "/courses/create";
+		var userID = sessionStorage.getItem("userID");
+		var data = JSON.stringify({
+				"name": courseName,
+				"description": courseDescr,
+				"userId": parseInt(userID)
+		});
+		$.ajax({
+		    type: 'POST',
+		    url: 	url,
+		    data: data,
+		    contentType: "application/json",
+		    dataType: 'json',
+		    success: function(data, status){
+		    	// If we don't get an error back, then process the data
+		    	if (status == "success") {
+			    	$("#myModal").modal("hide");
+		    		
+		    		// Extract the courseId
+		    		var courseID = data.classId;
+		    		var courseName = data.name;
+		    		var courseDescr = data.description;
+			    	$('#courseSelect').append('<option courseId="' + courseID + '">' + courseName + '</option>');
+			    	
+			    	// Add new course to the local storage
+			    	var courses = JSON.parse(localStorage.getItem("courses"));
+			    	courses.push(data);
+			    	localStorage.setItem("courses", JSON.stringify(courses));	// Store list of courses
+			    	//window.courses.push(data);	// Add new course to courses array
+			    	
+			    	if(courses.length == 1){
+						// Generate and add the HTML to the page
+						var courseHTML = getHomepageHTMLByCourseID(courses, courseID);
+						$("#courseContent").html(courseHTML);
+			    	}
+			    	
+			    	// TODO: Fix this
+			    	$('#courseSelect option:last').attr('selected', 'selected');
+			    	$('#courseSelect').trigger("change"); // Switch to newly added course (last one in list)
+		    	}
+		    	else {
+		    		alert("There was an error adding the course.");
+		    	}
+		    }
+		});
+	}
+});
+
+/**
+ * Instructor - Manage students button clicked
+ */
+$(document).on('click', '.manageStudentsBtn', function(event) {
+	var courseID = ($(event.currentTarget).parent()).attr('id');
+	sessionStorage.setItem("courseID", courseID);
+	loadPage("managestudents");
+});
+
+/**
+ * Instructor - Manage results button clicked
+ */
+$(document).on('click', '.manageResultsBtn', function(event) {
+	var courseID = ($(event.currentTarget).parent()).attr('id');
+	sessionStorage.setItem("courseID", courseID);
+	loadPage("manageresults");
+});
+
+
+/**
+ * Edit course button clicked
+ */
+$(document).on('click', '#editCourse', function(event) {
+	var courseID = $('#courseSelect option:selected').attr('courseid');	// Selected course
+	var course = getSessionCourseByCourseID(courseID);
+	$('#courseUpdateNameInput').val(course.name);
+	$('#courseUpdateDescInput').val(course.description);
+});
+
+/**
+ * Delete course button clicked
+ */
+$(document).on('click', '#deleteCourseBtn', function(event) {
+	var courseID = $('#courseSelect option:selected').attr('courseid');	// Selected course
+	var course = getSessionCourseByCourseID(courseID);
+	
+	bootbox.dialog({
+		  message: "Deleting a course will delete all students from the course, all results, all questions, and cannot be undone.",
+		  title: "Are you sure?",
+		  buttons: {
+		    danger: {
+		      label: "Yes",
+		      className: "btn-danger",
+		      callback: function() {
+				var url = sessionStorage.getItem("baseURL") + "/courses/" + courseID + "/delete";
+				var userID = sessionStorage.getItem('userID');
+				var data = JSON.stringify({
+						"userId": userID
+				});
+				$.ajax({
+				    type: 'DELETE',
+				    url: 	url,
+				    data: data,
+				    contentType: "application/json",
+				    dataType: 'json',
+				    success: function(data, status){
+				    	// If we don't get an error back, then process the data
+				    	if (status == "success") {
+					    	//$("#updateModal").modal("hide");
+				    		
+				    		// Extract the courseId
+				    		var courseID = data.courseId;
+
+				    		$('[courseId="' + courseID + '"]').remove();	// Update course dropdown
+				    		
+				    		removeCourseFromStorage(courseID);
+					    	
+					    	// Trigger select to update page
+					    	$('#courseSelect option:first').attr('selected', 'selected');
+					    	$('#courseSelect').trigger("change"); // Switch to newly added course (last one in list)
+				    	}
+				    	else {
+				    		alert("There was an error adding the course.");
+				    	}
+				    }
+				});
+		      }
+		    },
+		    main: {
+		      label: "No",
+		      className: "btn-default",
+		      callback: function() {
+		        // Do nothing
+		    		// TESTING
+		    		for(var i=0; i<3; i++)
+		    			queryString.push('my_param_key', 'some_new_value' + i)
+		      }
+		    }
+		  }
+		});
+});
+
+/**
+ * Called when get response from all available courses
+ */
+function courseListCallback(data, status){
+	if(status == "success"){
+		var courses = data.Courses;
+		
+		localStorage.setItem("courses", JSON.stringify(courses));	// Store list of courses
+		//window.courses = courses;
+		
+		var courseDropdown =
+			  '<div style="margin-top: 15px;" class="row">'+
+			    '<div class="col-md-1">'+
+			      '<p class="lead text-left">Course:</p>'+
+			    '</div>'+
+			    '<div class="col-md-3">'+
+			    '	<select class="form-control" id="courseSelect">';
+		
+		// Add course to list of courses on homepage
+		for (var i = 0; i < courses.length; i++) {
+			var courseID = courses[i].courseId;
+			var courseName = courses[i].name;
+			courseDropdown += '<option courseId="' + courseID + '">' + courseName + '</option>';
+		}
+		courseDropdown +=
+			'</select>'+
+			'</div>'+
+			'<div class="col-md-3">'+
+		    	'<button type="button" id="newCourse" class="btn btn-outline btn-primary btn-sm" data-toggle="modal" data-target="#myModal">New Course</button>'+
+		    	'<button type="button" id="editCourse" class="btn btn-outline btn-link" data-toggle="modal" data-target="#updateModal">Edit</button>'+
+		  	'</div>'+	
+			'</div>'+
+		  	'<div id="courseContent"></div>';
+		
+		$("#courses").append(courseDropdown);
+		
+		var courseID = sessionStorage.getItem('courseID');
+		
+		if(courseID != null){
+			$('[courseid="' + courseID + '"]').prop('selected', true);	// Set as selected course
+		}
+
+		// Generate and add the HTML to the page
+		var courseHTML = getHomepageHTMLByCourseID(courses, courseID);
+
+		$("#courseContent").append(courseHTML);
+		
+
+	}
+}
+
+function getHomepageHTMLByCourseID(courses, courseID){
+	if(courseID == null){
+		if(courses.length > 0){	// If at least one course, display first
+			var course = courses[0];
+		} else {
+			return noCoursesHTML()
+		}
+		
+	} else {
+		
+		if(courses.length > 0){	// If at least one course, display first
+			var course = getCourseByCourseID(courses, courseID);
+		} else {
+			return noCoursesHTML()
+		}
+	}
+	
+	// TODO: Fix. When "classId" passed instead
+	if(course.classId != null)
+		var courseID = course.classId;
+	else
+		var courseID = course.courseId;
+	var courseName = course.name;
+	var instructorName = course.instFName + " " + course.instLName;
+	var courseDescr = course.description
+	return homepageHTML(courseID, courseName, courseDescr);
+
+}
+
+/**
+ * Get HTML for no courses (jumbotron)
+ */
+function noCoursesHTML(){
+	var noCoursesHTML = 
+		'<div class="jumbotron" id="noLectures">'+
+			'<h1>Not Managing Any Courses</h1>'+
+			'<p>Create one by clicking the "New Course" button above.</p>'+
+		'</div>';
+	return noCoursesHTML;
+}
+
+
+/**
+ * Get the HTML page layout for a provided course
+ */
+function homepageHTML(courseID, courseName, courseDescr){
+	var courseHTML = "<!-- Page Header -->"+
+	 "	<div class=\"row\">"+
+	 "		<div style=\"margin-top: -10px;\" class=\"col-lg-12\">"+
+	 "			<h1>" + courseName +
+	 "				<small>" + courseDescr + "</small>" +
+	 "			</h1>"+
+	 "		</div>"+
+	 "	</div>"+
+	 "<!-- /.row -->";	
+
+	courseHTML += 
+	"<div class=\"row\">"+
+	"<div class=\"col-lg-4 col-md-4 portfolio-item\" id=\"" + courseID + "\">"+
+	"<a href=\"#\" class=\"managePollsBtn\">"+
+	"<div class=\"panel panel-primary\">"+
+	"<div class=\"panel-heading\">"+
+	   "<div class=\"row\">"+
+	       "<div class=\"col-xs-3\">"+
+	           "<i class=\"fa fa-bar-chart-o fa-5x\"></i>"+
+	       "</div>"+
+	       "<div class=\"col-xs-9 text-right\">"+
+	           "<div class=\"huge\"></div>"+
+	           "<div></div>"+
+	       "</div>"+
+	   "</div>"+
+	"</div>"+
+	
+	   "<div class=\"panel-footer\">"+
+	       "<span class=\"pull-left\">Manage Polls</span>"+
+	       "<span class=\"pull-right\"><i class=\"fa fa-arrow-circle-right\"></i></span>"+
+	       "<div class=\"clearfix\"></div>"+
+	   "</div>"+
+	
+	"</div>"+
+	"</a>"+
+	"</div>"+
+	
+	
+	"<div class=\"col-lg-4 col-md-4 portfolio-item\" id=\"" + courseID + "\">"+
+	"<a href=\"#\" class=\"manageResultsBtn\">"+
+	"<div class=\"panel panel-green\">"+
+	"<div class=\"panel-heading\">"+
+	"<div class=\"row\">"+
+	  "<div class=\"col-xs-3\">"+
+	      "<i class=\"fa fa-tasks fa-5x\"></i>"+
+	  "</div>"+
+	  "<div class=\"col-xs-9 text-right\">"+
+	      "<div class=\"huge\"></div>"+
+	      "<div></div>"+
+	  "</div>"+
+	"</div>"+
+	"</div>"+
+	"<div class=\"panel-footer\">"+
+	  "<span class=\"pull-left\">Manage Results</span>"+
+	  "<span class=\"pull-right\"><i class=\"fa fa-arrow-circle-right\"></i></span>"+
+	  "<div class=\"clearfix\"></div>"+
+	"</div>"+
+	"</div>"+
+	"</a>"+
+	"</div>"+
+	
+	
+	"<div class=\"col-lg-4 col-md-4 portfolio-item\" id=\"" + courseID + "\">"+
+	"<a href=\"#\" class=\"manageStudentsBtn\">"+
+	"<div class=\"panel panel-yellow\">"+
+	"<div class=\"panel-heading\">"+
+	"<div class=\"row\">"+
+	 "<div class=\"col-xs-3\">"+
+	     "<i class=\"fa fa-user fa-5x\"></i>"+
+	 "</div>"+
+	 "<div class=\"col-xs-9 text-right\">"+
+	     "<div class=\"huge\"></div>"+
+	     "<div></div>"+
+	 "</div>"+
+	"</div>"+
+	"</div>"+
+	"<div class=\"panel-footer\">"+
+	 "<span class=\"pull-left\">Manage Students</span>"+
+	 "<span class=\"pull-right\"><i class=\"fa fa-arrow-circle-right\"></i></span>"+
+	 "<div class=\"clearfix\"></div>"+
+	"</div>"+
+	"</div>"+
+	"</a>"+
+	"</div>"+
+	"</div>"+
+	"<!-- end row -->";
+	return courseHTML;
+}

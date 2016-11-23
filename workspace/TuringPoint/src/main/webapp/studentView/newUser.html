@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Create User</title>
+<link rel="stylesheet" type="text/css" href="../studentCSS/style.css">
+  <script src="../studentJS/newUser.js"></script>
+</head>
+<body>
+
+<header>
+ <img id="logo" src="../pic/Logo.png">
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
+
+<br>
+<br>
+<br>
+<br>
+
+<ul id = "menuContainer">
+<li>Welcome to Turing Point</li>
+</ul>	
+</header>
+<br>
+
+
+<form action = "login.html" onsubmit = "return signup();">
+	<ul id = "formContainer">
+		<li >Name: </li>
+		<li>
+		<input type = "text" name = "fName" placeholder="First Name">
+		<input type = "text" name ="lName" placeholder="Last Name">
+		</li>
+		<li>Student ID: </li>
+		<li><input type = "text" name = "studID" placeholder="Student ID"></li>
+		<li>E-Mail: </li>
+		<li><input type = "text" name = "email" placeholder="E-mail"></li>
+		<li>Password: </li>
+		<li><input type = "password" id = "password" name ="password" placeholder="Password"></li>
+		<li>Role: </li>
+		<li><input type ="radio" name = "role" value = "STUDENT" checked>Student</li>
+		<li><input type ="radio" name = "role" value = "INSTRUCTOR">Instructor</li>
+	</ul>
+	<input id = "loginButton" type="submit" value = "Submit">
+</form>
+<a href="login.html">
+<input id = "button" type="submit" value = "Cancel">
+</a>
+</body>
+</html>

@@ -1,0 +1,127 @@
+package com.turingpoint.controller.auth;
+
+import java.io.InputStream;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import javax.annotation.security.PermitAll;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.POST;
+import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.json.JSONObject;
+import org.json.JSONArray;
+
+import com.turingpoint.controller.ServerContext;
+import com.turingpoint.controller.ServerTypes;
+import com.turingpoint.dbmodel.db.dto.Credentials;
+import com.turingpoint.dbmodel.db.dto.NewUser;
+import com.turingpoint.dbmodel.db.mapping.Course;
+import com.turingpoint.dbmodel.db.mapping.User;
+import com.turingpoint.dbmodel.db.persister.CoursePersister;
+import com.turingpoint.dbmodel.db.persister.UserPersister;
+import com.turingpoint.dbmodel.model.Role;
+
+@Path("/support")
+@Produces(MediaType.APPLICATION_JSON)
+public class SupportServices {
+
+	ServerContext server = ServerContext.INSTANCE;
+	
+	@PermitAll
+    @POST
+    @Path("/feedback")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response SendFeedback(InputStream inputJSON)
+	{
+    	String msg = "";
+    	String feedbackBody = "";
+    	String feedbackType = "";
+    	String feedbackEnvironment = "";
+    	String consent ="";
+    	
+    	long   requestingUser = 0;
+    	JSONObject responseObject = new JSONObject();
+  	
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet";
+    		System.out.println("SupportServices | 58 | Malformed JSON | " + ServerTypes.StreamToString(inputJSON));
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Validate the input object
+    	try
+    	{
+    		feedbackBody = ServerTypes.HTMLescape(inputObject.getString("comment"));
+    		consent = ServerTypes.HTMLescape(inputObject.getString("consent"));
+    		feedbackType = ServerTypes.HTMLescape(inputObject.getString("type"));
+    		feedbackEnvironment = ServerTypes.HTMLescape(inputObject.getString("env"));
+    		requestingUser = inputObject.getLong("user");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters";
+    		System.out.println("SupportServices | 72 | Paramater Missing JSON | " + inputObject.toString());
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	try
+    	{
+    		User user = User.getUser(requestingUser);
+    		/////////////////////////Compose a feedback email
+    		//first generate a random hash key
+    		String feedbackCorrelationHash = UUID.randomUUID().toString();
+    		LocalDateTime correlationTime = LocalDateTime.now();
+    		String correlationID = feedbackCorrelationHash + ":" + correlationTime.toString();
+    		
+    		//Generate the message body
+    		String mailBody = ""+
+			"----------------------------------------<br>"+
+    		"FROM USERID: " + "<pre>" + requestingUser +"</pre>" +
+    		"USER TYPE: " + "<pre>" + user.getRole() +"</pre>" + 
+    		"Correlation ID: " +"<pre>" + correlationID +"</pre>" + 
+    		"REGARDING: " +"<pre>" + feedbackType  +"</pre>" +
+    		"CONTACTABLE:" + "<pre>" + consent  +"</pre>" +
+    		"----------------------------------------<br>"+
+    		"Environment<br>"+
+    		"----------------------------------------<br>"+
+    		"<pre>" + feedbackEnvironment +"</pre>" +
+    		"----------------------------------------<br>"+
+    		"User Report<br>"+
+    		"----------------------------------------<br>"+
+    		"<pre>" + feedbackBody +"</pre>";
+    		
+    		
+    		SendEmail.sendEmail(ServerTypes.TURINGPOINTSUPPORT_EMAIL, "FEEDBACK FROM USER: "+requestingUser, mailBody);
+    		System.out.println("|Support|Feedback Mail received|From userID: " +requestingUser +"|CorrelationID:" + correlationID);
+    	}
+    	catch(NullPointerException e)
+    	{
+    		//TODO: Log why user could not be created, log stack trace and json
+    		msg = "No user found";
+    		responseObject.put("msg", msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+		return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+}

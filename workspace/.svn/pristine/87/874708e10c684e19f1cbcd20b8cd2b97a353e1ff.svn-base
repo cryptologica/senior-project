@@ -1,0 +1,108 @@
+$(document).ready(function() {
+	
+	var role = sessionStorage.getItem('role');
+	var courseID = sessionStorage.getItem('courseID');
+	
+	if(courseID == null)
+		loadPage("login");
+
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/courses/" + courseID + "/students";
+
+	// Ask the server for a list of courses available for current user
+	$.getJSON(url, studentListCallback);
+	
+	if(role == null)
+		loadPage("login");
+	else if (role == "STUDENT"){
+		
+		
+	} else if (role == "INSTRUCTOR"){
+		
+	} else
+		loadPage("login");
+	
+});
+
+$(document).on('click', '.studentButton', function(event)
+{
+	var userID = $(this).attr("userId")
+	
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/users/" + userID;
+	
+	$.getJSON(url, studentInfoCallback);
+	
+});
+
+function studentListCallback(data, status){
+	if(status == "success"){
+		
+		//var lectures = data.Lectures;
+		//console.log(data)
+		var students = data["Students"]
+		
+		// Start building HTML for sidebar
+		var sidebarHTML = 
+			
+			"<div class=\"navbar-default sidebar\" role=\"navigation\">"+
+                "<div class=\"sidebar-nav navbar-collapse\" id=\"side-menu-parent\">"+
+                    "<ul class=\"nav in\" id=\"side-menu\">";
+		
+		//label for list
+		sidebarHTML +=
+		"<br>"+
+		"<div class=\"hidden-xs text-center\"><label>Students In Course</label></div>"+
+		"<div class=\"visible-xs text-center\"><button class=\"btn btn-primary\" data-toggle=\"collapse\" data-target=\"#studentList\"><div><label>Students In Course</label></div></button></div>";
+		
+		//Dynamically generate student list
+		sidebarHTML +=
+		"<div id=\"studentList\" class=\" hidden-xs list-group \">";
+			
+		for(var i = 0; i < students.length; i++) 
+		{
+			sidebarHTML += "<button userID=\""+students[i]["userId"]+"\" type=\"button\" class=\"list-group-item studentButton\">"+students[i]["lName"]+", "+students[i]["fName"]+"</button>";
+		}
+
+		sidebarHTML +=
+		"</div>";
+		
+		// Close HTML tags for sidebarHTML
+		sidebarHTML +=
+			"   		</ul><br>"+
+	                "</div>"+
+	                "<!-- /.sidebar-collapse -->"+
+	            "</div>"+
+	            "<!-- /.sidebar-collapse -->";
+		
+		$("#mainNav").append(sidebarHTML);
+		
+		if(students.length>0)
+			selectFirstStudent(students[0]["userId"]);
+	}
+}
+
+function selectFirstStudent(userID)
+{
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/users/" + userID;
+	
+	$.getJSON(url, studentInfoCallback);
+}
+
+function studentInfoCallback(data, status)
+{
+	if(status == "success")
+	{
+		console.log(data)
+		if("imageURL" in data && data.imageURL != null)
+			$("#profileImage").attr("src", data["imageURL"]);
+		else
+			$("#profileImage").attr("src", "../img/userIcon_s.png" );
+		
+		$("#fname").html(data["fName"]);
+		$("#lname").html(data["lName"]);
+		$("#email").html(data["email"]);
+		$("#studentId").html(data["studentId"]);
+	}
+}

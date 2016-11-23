@@ -1,0 +1,110 @@
+
+<!-- Navigation -->
+<nav class="navbar navbar-default navbar-static-top" id="mainNav"
+	role="navigation" style="margin-bottom: 0">
+	<div class="container-fluid">
+
+
+		<div class="navbar-header">
+			<button type="button" class="navbar-toggle" data-toggle="collapse"
+				data-target="#mainNavbar">
+				<span class="sr-only">Toggle navigation</span> <span
+					class="icon-bar"></span> <span class="icon-bar"></span> <span
+					class="icon-bar"></span>
+			</button>
+
+			<div id="studentMainNav"></div>
+			<img class="navbar-brand" id="logo" src="../img/logoWide4.png">
+		</div>
+		<div class="collapse navbar-collapse" id="mainNavbar">
+
+			<ul class="nav navbar-nav navbar-right">
+
+				<li class="dropdown"><a class="dropdown-toggle" id="username"
+					data-toggle="dropdown" href="#"> <span
+						class="glyphicon
+						glyphicon-user"></span> Sign Up
+				</a>
+					<ul class="dropdown-menu">
+						<li id="feedbackContainer"></li>
+						<li><a href="#" id="loginLogout"><span
+								class="glyphicon glyphicon-log-in"></span> Login</a></li>
+						<li></li>
+					</ul>
+				</li>
+
+			</ul>
+
+			<ul class="nav navbar-nav navbar-left" id="menu">
+				<!-- Menu items injected here -->
+			</ul>
+
+		</div>
+	</div>
+</nav>
+
+<!-- Modal form for feedback submission -->
+<div class="modal fade" id="feedbackModal" tabindex="-1" role="dialog"
+	aria-labelledby="feedbackModalLabel" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<button type="button" class="close" data-dismiss="modal"
+					aria-hidden="true">x</button>
+				<h4 class="modal-title" id="feedbackModalLabel">Submit Feedback</h4>
+			</div>
+			<div id="feedbackStatus" class="text-center"></div>
+			<form id="feedbackForm" role="form" lpformnum="1" _lpchecked="1">
+				<div class="modal-body">
+					<div class="form-group">
+						<label>Please Select a feedback category</label> <br> <select
+							id="feedbackAreaCategory" onchange="feedbackAreaCheck(this)">
+							<option selected="selected" value="General Feedback">General
+								Feedback or Comment</option>
+							<option value="General Enhancement Request">General
+								Enhancement Request</option>
+							<option value="Specific Feature Feedback">Specific
+								Feature Feedback</option>
+							<option value="Bug Report">Bug Report</option>
+						</select>
+						<div id="feedbackSpecificArea" class="hidden">
+							<br> <label>Please Select the feature you have
+								feedback about</label> <br> <select id="feedbackArea">
+								<option value="Polling">Polling and Questions</option>
+								<option value="Results">Results and Review</option>
+								<option value="User Interface">User Interface</option>
+							</select>
+						</div>
+						<p>
+						<div class="text-center">
+							<input id="consentBox" type="checkbox" name="consent" value="Yes"
+								checked> I would like to allow the developers to contact
+							me regarding this feedback<br>
+						</div>
+						</p>
+					</div>
+					<div class="form-group">
+						<label id="commentTextLabel">Comment</label> <br>
+						<div class="text-center">
+							<i>Limit 1000 characters</i>
+						</div>
+						<textarea id="commentInput" class="form-control" rows='10'
+							cols='100' maxlength='1000'
+							placeholder="ex: I love your software" required></textarea>
+					</div>
+					<button id="resetFeedbackForm" class="btn btn-default">Clear</button>
+					<div id="formError"></div>
+
+				</div>
+				<div class="modal-footer">
+					<button id="closeFeedback" type="button" class="btn btn-default"
+						data-dismiss="modal">Close</button>
+					<button id="feadbackSubmit" type="button" class="btn btn-primary">Submit</button>
+				</div>
+			</form>
+		</div>
+		<!-- /.modal-content -->
+	</div>
+	<!-- /.modal-dialog -->
+</div>
+<!-- /.modal -->

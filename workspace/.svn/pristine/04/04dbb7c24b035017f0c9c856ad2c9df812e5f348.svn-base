@@ -1,0 +1,22 @@
+<form class="registrationForm">
+	<ul class="registerForm">
+		<li>Name:</li>
+		<li><input type="text" name="fName" placeholder="First" required="required">
+			<input type="text" name="lName" placeholder="Last" required="required"></li>
+		<li>Student ID:</li>
+		<li><input type="text" name="studID" placeholder="u0123456"></li>
+		<li>E-Mail:</li>
+		<li><input type="text" name="email" placeholder="example@utah.edu" required="required"></li>
+		<li>Password:</li>
+		<li><input type="password" id="password" name="password"
+			placeholder="Password" required="required"></li>
+		<li>Confirm:</li>
+		<li><input type="password" id="passwordConfirm" name="passwordConfirm"
+			placeholder="Confirm" required="required"></li>
+		<li>Role:</li>
+		<li><input type="radio" name="role" value="STUDENT" checked>Student</li>
+		<li><input type="radio" name="role" value="INSTRUCTOR">Instructor</li>
+	</ul>
+	<input id="submitRegistration" type="submit" value="Submit">
+</form>
+<input id="cancelButton" type="submit" value="Cancel"> 

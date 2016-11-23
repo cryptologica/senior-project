@@ -1,0 +1,56 @@
+package com.turingpoint.dbmodel.db.persister;
+
+import java.util.Date;
+import java.util.List;
+
+import org.hibernate.Criteria;
+import org.hibernate.Query;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.criterion.Restrictions;
+
+import com.turingpoint.dbmodel.db.mapping.ActiveQuestion;
+import com.turingpoint.dbmodel.db.mapping.HibernateUtil;
+import com.turingpoint.dbmodel.db.mapping.Response;
+
+public class ResponsePersister extends HibernateUtil {
+
+	@SuppressWarnings("unchecked")
+	public static List<Response> getQuestionResponses(Long questionId) {
+		Session session = null;
+		try {
+			session = getSession();
+			Criteria criteria = session.createCriteria(Response.class);
+			return criteria.add(Restrictions.eq("responseId.questionId", questionId)).list();
+		} finally {
+			session.close();
+		}
+	}
+
+	public static Response storeNewResponse(Long userId, Long questionId, Long optionId, String textResponse) {
+		Response response = new Response();
+		response.setResponseId(userId, questionId);
+		response.setOptionId(optionId);
+		response.setTextResponse(textResponse);
+		return response.save();
+	}
+
+	public static Response updateResponse(Long userId, Long questionId, Long optionId, String textResponse, Date date) {
+		Response response = new Response();
+		response.setResponseId(userId, questionId);
+		response.setOptionId(optionId);
+		response.setTextResponse(textResponse);
+		response.setDate(date);
+		return response.save();
+	}
+
+	// Get responses for a class for a specific question, not generalized to
+	// user
+	public static List<Object[]> getMultipleChoiceQuestionResults(Long questionId, Long courseId) {
+
+		Session session = HibernateUtil.getSession();
+		String enrolledStudentQueryString = "SELECT userId FROM Student WHERE classId = " + courseId;
+
+		return null;
+	}
+}

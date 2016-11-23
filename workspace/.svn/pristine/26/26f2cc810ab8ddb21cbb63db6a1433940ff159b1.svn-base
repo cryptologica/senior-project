@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!DOCTYPE hibernate-configuration PUBLIC
+        "-//Hibernate/Hibernate Configuration DTD 3.0//EN"
+        "http://www.hibernate.org/dtd/hibernate-configuration-3.0.dtd">
+
+<hibernate-configuration>
+	
+	<session-factory>
+
+		<!-- Connection settings -->
+		<property name="hibernate.connection.driver_class">com.mysql.jdbc.Driver</property>
+
+		<!-- Connection timeout issue fix suggested here: https://itellity.wordpress.com/2013/07/18/mysql-reconnect-issues-or-the-last-packet-successfully-received-from-the-server-xx-milliseconds-ago-errors/ -->
+
+		<!-- Old DB:-->
+		<property name="hibernate.connection.url">jdbc:mysql://52.33.189.111:3306/TuringPoint?autoReconnect=true</property>
+
+		<!-- New Clone
+		<property name="hibernate.connection.url">jdbc:mysql://52.27.105.234:3306/TuringPoint?autoReconnect=true</property> -->
+
+		<property name="hibernate.connection.username">shadley</property>
+		<property name="hibernate.connection.password">TuringPointPW</property>
+		
+		<!-- Handle empty dates -->
+		<property name="hibernate.connection.zeroDateTimeBehavior">convertToNull</property>
+
+		<!-- SQL dialect -->
+		<property name="hibernate.dialect">org.hibernate.dialect.PostgreSQLDialect</property>
+
+		<!-- Print executed SQL to stdout -->
+		<property name="show_sql">true</property>
+
+		<!-- Drop and re-create all database on startup <property name="hibernate.hbm2ddl.auto">create-drop</property> -->
+
+		<!-- Disable the second-level cache -->
+		<property name="cache.provider_class">org.hibernate.cache.NoCacheProvider</property>
+		<property name="hibernate.cache.use_second_level_cache">false</property>
+		<property name="hibernate.cache.use_query_cache">false</property>
+		<property name="hibernate.c3p0.max_statements">0</property>
+
+		<!-- Reconnection settings https://developer.jboss.org/thread/251460 -->
+		<property name="hibernate.c3p0.min_size">3</property>
+		<property name="hibernate.c3p0.max_size">50</property>
+		<property name="hibernate.c3p0.timeout">3000</property>
+		<property name="hibernate.c3p0.max_statements">50</property>
+		<property name="hibernate.c3p0.idle_test_period">28680</property>
+
+		<!-- http://stackoverflow.com/questions/12035517/hibernate-reading-function-shows-old-data -->
+		<property name="hibernate.connection.isolation">2</property>
+
+		<!-- Annotated entity classes -->
+		<mapping class="com.turingpoint.dbmodel.db.mapping.User" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.Course" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.Instructor" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.ActiveQuestion" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.Student" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.RoleId" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.Lecture" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.Question" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.QuestionOption" />
+		<mapping class="com.turingpoint.dbmodel.db.mapping.Response" />
+
+
+	</session-factory>
+</hibernate-configuration>

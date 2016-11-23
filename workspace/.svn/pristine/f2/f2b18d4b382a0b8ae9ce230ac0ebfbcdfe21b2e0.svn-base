@@ -1,0 +1,55 @@
+package com.turingpoint.dbmodel.db.persister;
+
+import java.util.List;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.criterion.Restrictions;
+
+import com.turingpoint.dbmodel.db.mapping.HibernateUtil;
+import com.turingpoint.dbmodel.db.mapping.QuestionTags;
+
+public class QuestionTagsPersister extends HibernateUtil{
+
+	public static QuestionTags tagQuestion(Long questionId, Long tagId) {
+		QuestionTags newTags = new QuestionTags();
+		
+		newTags.setQuestionTagId(questionId, tagId);
+		newTags.save();
+		
+		return newTags;
+	}
+	
+	public static void untagQuestion(Long questionId, Long tagId) {
+		QuestionTags target = QuestionTags.getQuestionTags(questionId, tagId);
+		target.delete();
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static List<QuestionTags> getQuestionTagsForQuestion(Long questionId)
+	{
+		Session session = null;
+	    try{
+	        session = getSession();
+			Criteria criteria = session.createCriteria(QuestionTags.class);
+			return (List<QuestionTags>) criteria.add(Restrictions.eq("questionTagId.questionId", questionId)).list();
+	      } finally {
+	        session.close();
+	      }
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static List<QuestionTags> getQuestionTagsForTag(Long tagId)
+	{
+		Session session = null;
+	    try{
+	        session = getSession();
+			Criteria criteria = session.createCriteria(QuestionTags.class);
+			return (List<QuestionTags>) criteria.add(Restrictions.eq("questionTagId.tagId", tagId)).list();
+	      } finally {
+	        session.close();
+	      }
+	}
+	
+	
+}

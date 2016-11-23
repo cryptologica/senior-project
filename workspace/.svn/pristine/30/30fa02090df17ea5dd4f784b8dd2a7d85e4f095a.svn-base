@@ -1,0 +1,201 @@
+
+//For use in live settings
+function selectQuestion(questionID) {
+	window.ResultVisData = undefined;
+	window.ResultQuestionID = questionID;
+	window.ResultQuestionData = undefined;
+
+	$("#detailPanel").hide();
+
+	var baseURL = sessionStorage.getItem("baseURL");
+	//var url = baseURL + "/results/" + questionID +"/question";
+	var url2 = baseURL + "/question/" + questionID;
+	var url = baseURL + "/results/" + questionID + "/question";
+	
+	$.getJSON(url, makeHistogramFromData);
+	//$.getJSON(url2, fillInDetailData);
+}
+
+//Avoids double result calls since lecture results already have response numbers
+function selectQuestionFromExistingData(questionID) {
+	window.ResultVisData = undefined;
+	window.ResultQuestionID = questionID;
+	window.ResultQuestionData = undefined;
+
+	$("#detailPanel").hide();
+
+	var lectureData = window["lectureResults"];
+	
+	console.log(lectureData["lectureResults"]);
+	
+	var targetIndex = -1;
+	for(var i = 0 ; i < lectureData["lectureResults"].length  ; i++)
+		{
+			if(questionID == lectureData["lectureResults"][i]["qID"])
+				{
+				targetIndex = i;
+				break;
+				}
+		}
+	
+	makeHistogramFromData(lectureData["lectureResults"][targetIndex],"success");
+}
+
+function selectLecture()
+{
+	fillInLectureData(window["lectureResults"],"success");
+}
+
+function fillInLectureData(data, status) {
+	if (status == "success") {
+		$("#contentHolder").empty();
+		
+		//Do some data preprocessing
+		
+		
+		
+		
+		resultHTML = "" +
+		"<div class=\"col-sm-12\">"+
+		"<div id=\"detailPanel\" class=\"panel panel-default\">"+
+				"<div class=\"panel-heading\">"+
+						"<div class=\"h4 text-left\" id=\"questionTitle\">Overall Lecture Results</div>"+
+				"</div>"+
+				"<div class=\"panel-body\">"+
+					"<Table id=\"optionTable\" width=\"100%\">";
+
+
+		
+		
+		
+		
+
+
+		resultHTML+= ""+
+					"</Table>"+
+					"</div>"+
+					"</div>"+
+				"</div>";
+		
+		$("#contentHolder").append(resultHTML);
+	}
+}
+
+//Digests lecture results and makes an easy to use struct out of it
+function digestLectureResults(data)
+{
+	
+}
+
+function makeHistogramFromData(data, status) {
+	//console.log(data)
+	//console.log(success)
+	if (status == "success") {
+		window.ResultVisData = data;
+
+		$("#contentHolder").empty();
+		//Add content pane for question
+		var contentHolderText = "" +
+			"<div class=\"col-sm-6\" id=\"chartHome\">"+
+			"<svg  height=\"500\" width=\"500\"></svg>" +
+			"</div>"+
+			"<div class=\"col-sm-6\">"+
+				"<div id=\"detailPanel\" class=\"panel panel-default\">"+
+					"<div class=\"panel-heading\">"+
+						"<div class=\"h4 text-left\" id=\"questionTitle\">Question Title</div>"+
+					"</div>"+
+					"<div class=\"panel-body\">"+
+						"<label id=\"questionText\">Question Text</label>"+
+						"<Table id=\"optionTable\" width=\"100%\">"+
+						"</Table>"+
+					"</div>"+
+				"</div>"+
+			"</div>";
+			
+		$("#contentHolder").append(contentHolderText);
+		
+		resultsVis = new VisHistogram("#chartHome", data);
+		resultsVis.SetupVisualization();
+
+		var baseURL = sessionStorage.getItem("baseURL");
+		//var url = baseURL + "/results/" + questionID +"/question";
+		var url2 = baseURL + "/question/" + window.ResultQuestionID;
+
+		$.getJSON(url2, fillInDetailData);
+	}
+}
+
+function fillInDetailData(data, status) {
+	if (status == "success") {
+		$("#optionTable").find(".generatedTableRow").remove();
+		//console.log(data)
+		//dconsole.log(window.ResultVisData)
+
+		window.ResultQuestionData = data;
+
+		$("#detailPanel").show();
+
+		$("#questionTitle").html(
+				sessionStorage.getItem('lectureName') + " | " + data["title"]);
+		$("#questionText").html(data["content"]);
+
+		var totalResponses = 0
+
+		tableHTML = "<tr class=\"generatedTableRow\"><th>Response</th><th>Number of Responses</th><th>Percentage</th>";
+
+		if (data["type"] == 1) {
+
+		}
+
+		var uniqueResponses = 0;
+		
+		for (var i = 0; i < window.ResultVisData["results"].length; i++) {
+			totalResponses += getResultCount(window.ResultVisData["results"][i]["id"])
+		}
+
+		for (var i = 0; i < window.ResultVisData["results"].length; i++) 
+		{
+			var responseCount = getResultCount(window.ResultVisData["results"][i]["id"])
+			
+			if(responseCount > 0 )
+				{
+					uniqueResponses++;
+				}
+			
+			var responsePercent = (responseCount / totalResponses) * 100
+			if (totalResponses == 0)
+				responsePercent = 0;
+			tableHTML += "<tr class=\"generatedTableRow\"><td>"
+					+ window.ResultVisData["results"][i]["name"] + "</td><td>"
+					+ responseCount + "</td><td>" + responsePercent.toFixed(2)
+					+ "\%</td></tr>"
+		}
+
+		//Add rows for aggregate results
+		tableHTML += "<tr class=\"generatedTableRow\"><th>Unique Responses</th><th>Total Responses</th><th></th></tr>";
+		tableHTML += "<tr class=\"generatedTableRow\"><td>"
+				+ uniqueResponses + "</td><td>"
+				+ totalResponses + "</td><td></td></tr>";
+
+		$("#optionTable").append(tableHTML);
+	}
+}
+
+function getResultCount(optionId) {
+	var ret = 0;
+
+	for (var i = 0; i < window.ResultVisData["results"].length; i++) {
+		if (window.ResultVisData["results"][i]["id"] == optionId)
+			ret = window.ResultVisData["results"][i]["count"];
+	}
+
+	return ret
+}
+
+function getResponseTextByID(optionId) {
+
+	for (var i = 0; i < window.ResultVisData["results"].length; i++) {
+		if (window.ResultVisData["results"][i]["id"] == optionId)
+			ret = window.ResultVisData["results"][i]["count"];
+	}
+}

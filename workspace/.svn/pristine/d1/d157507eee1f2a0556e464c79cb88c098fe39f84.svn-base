@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<!--  Start - Should be present on top of head on all pages -->
+<script src="../bower_components/jquery/jquery-latest.min.js"
+	type="text/javascript"></script>
+
+<!-- JQuery cookie manager - https://github.com/js-cookie/js-cookie -->
+<script src="../js/cookieMonster.js"></script>
+
+<!-- Favorite Icons -->
+<link rel="icon" type="image/png" href="../img/favicon-32x32.png"
+	sizes="32x32" />
+<link rel="icon" type="image/png" href="../img/favicon-16x16.png"
+	sizes="16x16" />
+
+<!-- Main js used to inject content used throughout the site, and manage session vars -->
+<script src="../js/main.js" type="text/javascript"></script>
+
+<!--  End - Should be present on top of head on all pages -->
+
+<!-- JQuery url query manager - https://github.com/alrusdi/jquery-plugin-query-object -->
+<script src="../js/jquery-object.js"></script>
+
+<!-- JQuery url query manager - http://stackoverflow.com/questions/22258793/set-url-parameters-without-causing-page-refresh -->
+<script src="../js/query-string.js"></script>
+
+
+<!-- Custom (Formerly Injected) -->
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+
+<title>Turing Point - Clicker Replacement</title>
+
+<!-- Bootstrap Core CSS -->
+<link href="../bower_components/bootstrap/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+
+<!-- MetisMenu CSS -->
+<link href="../bower_components/metisMenu/dist/metisMenu.min.css"
+	rel="stylesheet">
+
+<!-- Timeline CSS -->
+<link href="../dist/css/timeline.css" rel="stylesheet">
+
+<!-- Custom CSS -->
+<link href="../dist/css/sb-admin-2.css" rel="stylesheet">
+
+<!-- Custom Fonts -->
+<link href="../bower_components/font-awesome/css/font-awesome.min.css"
+	rel="stylesheet" type="text/css">
+
+
+<!-- Fancy text editing and code highlights-->
+<link rel="stylesheet" type="text/css"
+	href="../bower_components/prism/prism.css">
+<script src="../bower_components/prism/prism.js"></script>
+
+<!-- Our CSS -->
+<link href="../css/style.css" rel="stylesheet" type="text/css">
+<link href="../css/explorer.css" rel="stylesheet" type="text/css">
+
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+
+<!-- Metis Menu Plugin JavaScript -->
+<script src="../bower_components/metisMenu/dist/metisMenu.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../dist/js/sb-admin-2.js"></script>
+
+
+
+<script>
+	/*
+	$(document).ready(function() {
+
+	});
+	 */
+	$(document).on('click', '.guideNav', function(event) {
+		$('.guidePage').addClass('hidden');
+		var page = $(this).attr('page');
+		$('#' + page).removeClass('hidden');
+	});
+</script>
+
+</head>
+
+<body>
+
+	<!-- Header injected here -->
+	<div id="header"></div>
+
+	<!-- Page Content -->
+	<div class="container" style="height: 100%;">
+
+		<br>
+		<div class="row">
+
+			<div class="col-md-3">
+				<p class="lead">User's Guide</p>
+				<div class="list-group">
+					<a href="#" class="guideNav list-group-item" page="registration">Registration</a>
+					<a href="#" class="guideNav list-group-item" page="instHomepage">Instructor's Homepage</a> 
+					<a href="#" class="guideNav list-group-item" page="manageLectures">Manage Lectures</a> 
+					<a href="#" class="guideNav list-group-item" page="manageStudents">Manage Students</a>
+					<a href="#" class="guideNav list-group-item" page="manageResults">Manage Results</a>
+				</div>
+			</div>
+
+			<div class="col-md-9" id="pageContent">
+
+				<div id="registration" class="guidePage">
+					<h1>Registration</h1>
+					Registration page content here
+				</div>
+
+				<div id="instHomepage" class="guidePage hidden">
+					<h1>Instructor's Homepage</h1>
+					<h2>Create New Course</h2>
+					<img src="../img/guide/newCourse.png" style="width: 100%;">
+					<blockquote>
+						<p>To create a course, click the ‘New Course’ button. This
+							dialog will be presented. Enter your info and click ‘Create’. The
+							course will be created and loaded on the page for you to begin
+							managing it.</p>
+					</blockquote>
+
+					<h2>Switch Course</h2>
+					<img src="../img/guide/instCourseSelector.png" style="width: 100%;">
+					<blockquote>
+						<p>Click the ‘Course:’ drop-down menu to manage a different
+							course you’ve already created.</p>
+					</blockquote>
+
+					<h2>Update Course</h2>
+					<img src="../img/guide/updateCourse.png" style="width: 100%;">
+					<blockquote>
+						<p>
+						<ul>
+							<li>Click the ‘Edit’ link - to the left of the ‘New Course’
+								button. The above dialog will be displayed.</li>
+							<li>Click ‘Reset’ if you wish to clear all the fields.</li>
+							<li>Click ‘Delete’ if you wish to delete this course
+								entirely.</li>
+							<li>Click ‘Update’ if you wish to save any changes to the
+								name or description.</li>
+						</ul>
+						</p>
+					</blockquote>
+
+					<h2>Homepage Navigation</h2>
+					<img src="../img/guide/instHomepage.png" style="width: 100%;">
+					<blockquote>
+						<p>To manage Lectures, Results or Students, click on the
+							associated button which will redirect you to the appropriate
+							management page.</p>
+						<p>You can click on recent Lectures, Results or Students to
+							conveniently manage them instead of navigating through the
+							management pages.</p>
+					</blockquote>
+
+
+				</div>
+
+				<div id="manageLectures" class="guidePage hidden">
+					<h1>Manage Lectures</h1>
+
+				</div>
+
+				<div id="manageStudents" class="guidePage hidden">
+					<h1>Manage Students</h1>
+
+					<h2>Student List</h2>
+					
+					<blockquote>
+						<img align="right" src="../img/guide/studentList.png" style="width: 30%; margin: 1em;">
+						<p>The student List allows instructors to quickly select from
+							the students in the course. The list will display the total
+							number of students in the course as well as all of their names.
+							The list itself is organized by alphabetical ordering of the
+							student’s supplied last name. Selection is as simple as clicking
+							on a student’s name.</p>
+					</blockquote>
+					
+					<h2>Student Information</h2>
+					<blockquote>
+						<p>The student management page provides access to student
+							profile information which may be useful for instructors.</p>
+
+						<img src="../img/guide/studentInfo.png" style="width: 100%; margin: 1em;">
+
+						<p>The information focuses on simple information such as the
+							registration date of a student and the ID number supplied by the
+							student which is used in their results export for grading
+							purposes. It also includes their email address such that one can
+							easily communicate with the student if needed.</p>
+					</blockquote>
+
+					<h2>Student Results</h2>
+					<blockquote>
+						<p>Student results are the primary feature of the student
+							management page. With student results, Instructors are given an
+							overview of the performance of each student on the the lectures
+							they have given.</p>
+					</blockquote>
+					<img src="../img/guide/studentResults.png" style="width: 100%; margin: 1em;">
+					<blockquote>
+						<p>Each lecture button contains information such as the name
+							of the lecture, how many questions from the given lecture are
+							published and also how many questions were answered by the
+							student in question within the given lecture.</p>
+					</blockquote>
+					<img src="../img/guide/studentResults2.png" style="width: 100%; margin: 1em;">
+					<blockquote>
+						<p>Clicking on a lecture button expands the lecture, allowing
+							the instructor to get a question by question breakdown of the
+							student’s participation (or lack thereof) on a question by
+							question basis, including what topics each question contains and
+							the correctness of the student on a given question.</p>
+					</blockquote>
+
+				</div>
+				
+				<div id="manageResults" class="guidePage hidden">
+					<h1>Manage Results</h1>
+					<h2>Lecture Overview</h2>
+
+					<img src="../img/guide/userdoc_manageresults.png" style="width: 100%; margin: 1em;">
+
+					<blockquote>
+					<p>
+					When an instructor has selected a lecture to view results for, they are first presented with the Lecture Overview. 
+					From this perspective a user will be able to see the names of all questions present in a lecture, the participation 
+					in each individual question and the overall percentage of correct responses given for a question.
+					</p>
+					<p>
+					This at a glance information helps instructor users quickly identify and focus on areas they want to analyze. 
+					When one clicks on a question either on the question list on the right hand side, or the overview, they are brought 
+					to the Question Overview.
+					</p>
+					</blockquote>
+
+					<h3>Question Overview</h3>
+					<blockquote>
+					<p>
+					The question overview allows an instructor to visualize results data for a question. When a question has been 
+					responded to by at least one student, the perspective will allow instructors to see both a bar graph, representing 
+					the number of times a specific response was selected. Hovering with the mouse over one of these columns will provide 
+					a tooltip indicating the full text of the selected option in addition to the number of selections for this option 
+					</p>
+					<img align="left" src="../img/guide/userdoc_resultgraph.png" style="width: 35%; margin: 1em;">
+					<p>
+					Users will also be presented with a table containing the answers submitted. In questions that the answers are 
+					predefined such as multiple choice or multiple answer question types, the answers created by the instructor in the 
+					question creator will be shown here. In fill in the blank type questions, either numeric response or word based 
+					answers, all answers submitted by students as well as the single correct answer will be shown in the table as well.
+					</p>
+					
+					<img align="right" src="../img/guide/userdoc_resulttable.png" style="width: 35%; margin: 1em;">
+					<p>
+					Answers which were marked correct at creation time will show with a green indicator arrow and be written in dark 
+					green text to allow the user to differentiate correct answers from incorrect ones. In the case of multiple answer 
+					questions, all correct options will be highlighted in such a fashion. The same applies to numeric response types; 
+					Any answer that is within the error margin given by an instructor will also be marked correct. Note that hovering 
+					over any option in the table highlights the corresponding bar in the chart. This allows the user to easily correlate
+					 between views.
+					</p>
+					</blockquote>
+					
+					<h3>Student Response Overview</h3>
+					<blockquote>
+					<p>
+					When exploring question results from the results explorer, Instructors may also select a response by clicking on it,
+					either in the table or in the chart.
+					</p>
+					<img src="../img/guide/userdoc_studentresponses.png" style="width: 100%; margin: 1em;">
+					<p>
+					Clicking on an option will bring up the Student Response Overview perspective beneath the chart and table perspectives. 
+					From the Student Response Overview perspective, instructors can make determinations as to who may have answered 
+					questions incorrectly or who may be struggling to understand key concepts based on the responses they give to 
+					questions. For student privacy, this perspective is not enabled in the review tab on the manage polls page and is 
+					only enabled in the manage results area of the system.
+					</p>
+					</blockquote>
+
+					<h3>Tagging</h3>
+					<blockquote>
+					<p>
+					Beneath the question overview, the tagging interface is visible. With the tagging interface one can apply tags to questions 
+					that can be used to add another level of organization to questions, perhaps based on their content and not the lecture they 
+					are contained in.
+					</p>
+					<img src="../img/guide/userdoc_usertags1.png" style="width: 100%; margin: 1em;">
+					<p>
+					To use the tagging interface a user simply types a tag into the provided user interface and presses the enter key. 
+					After the tag is applied to the question it will appear in the well to the right of the tag entry window. Removing a tag is 
+					as simple as clicking the X icon in the tag one wishes to remove. 
+					</p>
+					<img src="../img/guide/userdoc_usertags2.png" style="width: 100%; margin: 1em;">
+					<p>
+					Tags can be entered as a list but are always one word, if 
+					you wish to have multi-word tags you should consider using a hyphen or non space character to differentiate them. Therefore 
+					if a user enters the following: “Computer Programming” two resultant tags, both computer, and programming will be generated. 
+					It should be noted also that tags will always be created as lower case words even if entered with capital letters initially.
+					</p>
+					
+					</blockquote>
+
+					<h3>Results Exploration</h3>
+					<blockquote>
+					<p>
+					<img align="left" src="../img/guide/userdoc_resultsexplorer.png" style="width: 55%; margin: 1em;">
+			        One of the primary features of tagging is the ability to explore tags. To explore tags one simply clicks on the body of the 
+			        tag in question. This will bring up the Results Explorer. The results explorer allows users to browse questions by tags rather 
+			        than by lecture, allowing users to examine correlations between topics. When one first starts the Results Explorer, one will 
+			        notice that the tag they clicked on to open the explorer is the shown in the currently browsing box. On the right hand side, 
+			        all questions in the course with a given tag will be displayed along with the lecture in which they are present. To change which 
+			        tag one is browsing, one simply need click on the tag in question and the perspective will show questions containing it.
+			        </p>
+					<p>
+					Clicking on a question in the right hand side will result in a Question Overview perspective for the selected question.
+					<img align="left" src="../img/guide/userdoc_resultsexploredetail.png" style="width: 55%; margin: 1em;">
+					As one would expect, clicking on a column in the chart will display those who selected the option. 
+					If one selects the details tab at the top of the overview, they will be shown the tabular form of the response data and 
+					will also be capable of clicking any row within it to bring up the same Student Response Overview.
+			      	</p>
+			      	
+					<p>  
+					This compressed version of the Question Overview perspective allows the user to have the same powerful exploration capabilities 
+					as the full Question Overview perspective but without having to leave the current page. Because this explorer operates based on 
+					the user defined tags defined in the tagging interface, the explorer allows instructors to explore correlations and data relation 
+					easily and conveniently.
+					</p>
+					</blockquote>
+
+					<h3>Results Export</h3>
+					<blockquote>
+					<img align="right" src="../img/guide/userdoc_exportresults.png" style="width: 35%; margin: 1em;">
+					<p>
+					From time to time an instructor may wish to use results generated by the application in an external learning management or score 
+					tracking system. For this purpose, the manage results page provides a results export feature that allows instructors to export a CSV 
+					file containing a list of scores for the lecture in question.
+					</p>
+					
+					<p> 
+					Results are exported with the student id as the first column for easy import into other systems. Next is the last name and then first 
+					name of each student followed by the number of points they earned. Note that this system only exports aggregate scores for the entire 
+					lecture and does not score individual questions. Also remember that points are only generated in the scoring system by answers marked 
+					as correct during question creation and that the modification of point values in existing questions that have been answered will 
+					change the resulting score calculations of subsequent score exports if the student has answered correctly for the question that was 
+					change.
+					</p>
+					</blockquote>		
+				</div>
+				
+
+			</div>
+
+		</div>
+
+
+
+
+
+
+
+
+	</div>
+	<!-- /.container -->
+
+
+</body>
+
+</html>

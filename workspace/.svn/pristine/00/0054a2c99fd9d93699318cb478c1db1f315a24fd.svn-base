@@ -1,0 +1,12 @@
+.modal-resultsexplorer {
+    width:80%;
+    height:90%;
+    margin: 10% auto;
+}
+.modal-resultsexplorer > .modal-body {
+    max-height:800px;
+    overflow:auto;
+}
+.modal-resultsexplorer > .modal-content {
+    height: 100%;
+}

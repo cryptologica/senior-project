@@ -1,0 +1,423 @@
+
+// function to start when the page is loaded
+//window.onload = initialize();
+$(document).ready(initialize());
+
+function initialize()
+{
+	localStorage.removeItem("QS");	// Clear existing question set
+	sessionStorage.removeItem("questionID");	// Clear any existing active question
+	sessionStorage.removeItem("lastUpdate");
+	
+	baseURL = sessionStorage.getItem("baseURL");
+	userid = sessionStorage.getItem('userID');
+	courseID = parseInt(sessionStorage.getItem("courseID"));
+	sessionStorage.setItem("answer", "");
+	checkQuestionStatus();
+};
+
+$(window).resize(function(){
+	resize();
+});
+
+function resize()
+{
+	var t = document.getElementById("collapseOne");
+	if ($(window).width() <= 800){	
+		
+		t.setAttribute("class", "panel-collapse collapse");
+	}
+	else
+		{
+		t.setAttribute("class", "panel-collapse collapse in");
+		}
+}
+
+/**
+ * Fetches the full question list to see what has changed
+ */
+function checkQuestionStatus(){
+	var lectureID = sessionStorage.getItem("lectureID");
+	var userID = sessionStorage.getItem("userID");
+	$.ajaxSetup({
+	    cache: false
+	});
+	$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/results/" + lectureID + "/lecture/" + userID,
+		    success: questionStatusCallback,
+		    error: questionStatusCallback
+		    });
+}
+
+/**
+ * Callback after getting the list of available questions
+ */
+function questionStatusCallback(result, status)
+{
+	
+	console.log("Received question list");
+	
+	//$('#myModal').modal('show');
+	$("#studentMainNav").empty();
+	var LR = result.lectureResults;
+	if(status = "success" && LR.length > 0)
+	{
+		var testQS = JSON.parse(localStorage.getItem("QS"));
+		
+		if(!equal(LR, testQS)){	// If question list has been modified
+			
+			console.log("Quesiton list is new or has been modified.");
+			
+			var questionID = sessionStorage.getItem("questionID");
+			var curVersion = $('[name='+questionID+']').attr('version');	// Grab current version before it goes away
+			var pointArr = {};
+			$("#qs").empty();
+			resize();
+			// Append questions to the questions list
+			for(var i = 0; i < LR.length; i++)
+			{
+				if(LR[i].qID != 54)
+				{
+					//var addHTML = '<li class="list-group-item" id = "'+qs[i].questionId+'"><span class="glyphicon glyphicon-file"></span><a href="#Q1" id="question" name = "'+qs[i].questionId+'">'+qs[i].title+'</a></li>';
+					var addHTML = '<a href="#" class="list-group-item" id="question" name = "'+LR[i].qID+'" version='+LR[i].value+'><span class="glyphicon glyphicon-file"></span>'+LR[i].title+'<div style="float:right">Score : -/'+LR[i].value+'</div></a>';
+					$("#qs").append(addHTML);
+					pointArr[LR[i].qID]=+LR[i].value;
+					}
+				
+			}
+			
+			sessionStorage.setItem("pointArr",JSON.stringify(pointArr));
+			//$('[name='+questionID+']').addClass('active');	// Select active question on list
+			
+			//localStorage.setItem("QS", JSON.stringify(qs));	// Store new/updated question list
+			
+				if(questionID == null){	// If no active question, fetch the first one
+					var currQID = JSON.parse(sessionStorage.getItem("currQID"));
+					questionID = currQID;
+					if(currQID == null)
+					{
+						questionID = LR[0].qID;
+					}
+					sessionStorage.setItem("questionID", questionID);
+					$.ajax({
+					    method : 'GET',
+					    ContentType: 'application/json', 
+					    url : baseURL +"/question/" + questionID,
+					    success: questionCallback,
+					    error: questionCallback
+					    });
+				} 
+			
+		} else
+			console.log("Question list unchanged.");
+
+		sessionStorage.setItem("lastUpdate", result.lastUpdate);	// Timestamp for when course status was last updated
+		//setTimeout(checkLastUpdateTime, 10000);	// Re-fetch question status after timeout
+		var lectureTitle = sessionStorage.getItem("lectureTitle");
+		$("#lectureTitle").append(lectureTitle);
+	}
+	else
+	{
+		type = -1;
+		alert("No active questions available.  Moving to homepage.");
+		loadPage("home_student");
+	}
+};
+
+/**
+ * Clicking on a question
+ */
+$(document).on('click', '#question', function(event)
+{
+	event.preventDefault();
+	questionID = event.currentTarget.name;
+	$("#questionFeedback").empty();
+	sessionStorage.setItem("currQID", questionID);
+	loadNewQuestion(questionID);
+});
+
+/**
+ * Load a new question with the provided questionId
+ */
+function loadNewQuestion(questionID){
+	
+	// Handle any warnings from auto updating
+	var closedId = $('#alertBox').attr("closedId");	// The question ID where alert was generated for question being closed
+	var updateId = $('#alertBox').attr("updateId");	// The question ID where alert was generated for question being updated
+	if(closedId != null){	// If a question was previously closed
+		$('#alertBox').removeAttr('closedId');	// Clear flag for next time
+	} else {
+		$('#closedAlert').empty();	// Clear any alert messages
+	}
+	if(updateId != null){	// If a question was previously updated
+		$('#alertBox').removeAttr('updateId');	// Clear flag for next time
+	} else {
+		$('#updateAlert').empty();	// Clear any alert messages
+	}
+	
+	sessionStorage.setItem("questionID", questionID);
+	$('div[id="formError"]').empty();
+	$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/question/" + questionID,
+		    success: questionCallback,
+		    error: questionCallback
+		    });
+}
+
+function questionCallback(result, error)
+{
+	//$('#myModal').modal('show');
+	if(error == "success")
+	{
+
+		$("#questionTitle").empty();
+		$("#questionQuestion").empty();
+		$("#questionContent").empty();
+		$("#questionTitle").css("visibility","hidden");
+		$("#questionQuestion").css("visibility","hidden");
+		$("#questionContent").css("visibility","hidden");
+		$("#saveAnswer").css("visibility", "hidden");
+		//$("#studentMainNav").empty();
+		//var html = '<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#studentNav"><span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span></button>';
+		//$("#studentMainNav").append(html);
+		
+		console.log(result);
+		var content = result.content;
+		type = result.type;
+		var options = result.options;
+		sessionStorage.setItem("callbackResult", JSON.stringify(result));
+		var title = result.title;
+		version = result.version;
+
+		var addHTML = title+'<h2 style = "float : right"></h2>';
+		$("#questionTitle").append(addHTML);
+		$("#questionQuestion").append(content);
+
+		if(type == 0)
+		{
+			addHTML = '<div class="btn-group-vertical" id ="questionContent2" style="width:100%" data-toggle="buttons">';
+			$("#questionContent").append(addHTML);
+			for(var i = 0; i < options.length; i++)
+			{
+				addHTML = '<label class="btn btn-default" id="options" name="'+options[i].optionId+'" style="text-align: left;white-space: normal;"><input class="btn btn-default" type="radio" id="option" name="'+options[i].optionId+'" autocomplete="off">'+options[i].text+'</label>';
+				$("#questionContent2").append(addHTML);
+			}
+        
+			
+		}
+		else if(type == 1)
+		{
+			addHTML = '<h4 id = "answerIcon">Response</h4><textarea class = "form-control" disabled rows="4" style="width:100%; resize:none" id="textBox"></textarea>';
+			$("#questionContent").append(addHTML);
+			addHTML = '<h4>Correct Answer</h4><textarea class = "form-control" disabled rows="4" style="width:100%; resize:none" id="textAnswer"></textarea>';
+			$("#questionContent").append(addHTML);
+		}
+		else if(type == 2)
+		{
+			addHTML = '';
+			for(var i = 0; i < options.length; i++)
+			{
+				addHTML = '<div = class = "row"><input type="checkbox" disabled id = "check'+i+'" name="vehicle" value="Bike" style="height:15px;width:15px;margin-left:5px;margin-right:5px;visibility:hidden"><button class = "btn btn-default" style="text-align: left;white-space: normal;width:100%" id="mButton" box = "check'+i+'" data-toggle="buttons">'+options[i].text+'</button><div>';
+				$("#questionContent").append(addHTML);
+			}
+			
+		}
+		else if(type == 3)
+		{
+			addHTML = '<h4 id = "answerIcon">Response</h4><textarea class = "form-control" disabled rows="1" style="width:100%; overflow-y : hidden; resize:none" id="textBox"></textarea>';
+			$("#questionContent").append(addHTML);
+			addHTML = '<h4>Correct Answer</h4><textarea class = "form-control" disabled rows="1" style="width:100%; overflow-y : hidden; resize:none" id="textAnswer"></textarea>';
+			$("#questionContent").append(addHTML);
+		}
+		
+		//For code highlighting
+		Prism.highlightAll();
+	}
+	else
+	{
+		$('div[id="formError"]').html( generateAlert("Unknown type asked", 4) );
+		console.log(type);
+	}
+	//MathJax.Hub.Queue(["Typeset",MathJax.Hub]);
+	//$('#myModal').modal('hide');
+	userid = sessionStorage.getItem('userID');
+	questionID = sessionStorage.getItem('questionID');
+	console.log(questionID);
+	
+	// Update selected active question on quesiton list
+	$('[name]').removeClass('active');
+	$('[name='+questionID+']').addClass('active');
+	$("#tooltip").css("visibility", "");
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/results/" + questionID +"/question/"+userid,
+	    success: getAnswerCallback,
+	    error: getAnswerCallback
+	    });
+};
+
+function getAnswerCallback(result, error)
+{
+	if(error=="success")
+		{
+			var results = result.results;
+			var callbackResult = JSON.parse(sessionStorage.getItem("callbackResult"));
+			var options = callbackResult.options;
+			var answer;
+			var qid = result.qID;
+			var arr = JSON.parse(sessionStorage.getItem("pointArr"));
+			$('#score').empty();
+			$("#score").append("-/"+arr[qid]);
+			//sessionStorage.setItem("qid", qid);
+			
+			if(results.length > 0)
+				{
+				if(callbackResult.type == 0)
+					{
+						$("#questionContent2").empty();
+						for(var i = 0; i < options.length; i++)
+						{
+							for(var j = 0; j< results.length; j++)
+							{
+								if(results[j].id == options[i].optionId)
+									{							
+										if(results[j].count > 0 && results[j].correct)
+										{
+											addHTML = '<label class="btn btn-default active" id="options" name="'+results[j].id+'" style="text-align: left;white-space: normal;background-color:#FEFE6F; border-color:green; border-width:5px;cursor:default"><input class="btn btn-default" type="radio" id="option" name="'+results[j].id+'" autocomplete="off"><span class="glyphicon glyphicon-ok" style="color:green"></span>'+results[j].name+'</label>';
+										}
+										else if(results[j].count > 0 && !results[j].correct)
+										{
+											addHTML = '<label class="btn btn-default active" id="options" name="'+results[j].id+'" style="text-align: left;white-space: normal;background-color:#FEFE6F; border-color:red; border-width:5px;cursor:default"><input class="btn btn-default" type="radio" id="option" name="'+results[j].id+'" autocomplete="off"><span class="glyphicon glyphicon-remove" style="color:red"></span>'+results[j].name+'</label>'
+										}
+										else if(results[j].count == 0 && results[j].correct)
+										{
+											addHTML = '<label class="btn btn-default" id="options" name="'+results[j].id+'" style="text-align: left;white-space: normal; border-color:green; border-width:5px;cursor:default"><input class="btn btn-default" type="radio" id="option" name="'+results[j].id+'" autocomplete="off">'+results[j].name+'</label>';
+										}
+										else
+										{
+											addHTML = '<label class="btn btn-default" id="options" name="'+results[j].id+'" style="text-align: left;white-space: normal;cursor:default"><input class="btn btn-default" type="radio" id="option" name="'+results[j].id+'" autocomplete="off">'+results[j].name+'</label>';
+										}
+									}
+							}
+							$("#questionContent2").append(addHTML);
+						}
+						
+					}
+				else if(callbackResult.type == 1)
+					{
+					//$('#myModal').modal('show');
+					//console.log(results[0].name);
+						//$("#textBox").append(results[0].name);
+						//document.getElementById("textBox").innerHTML = results[0].name;
+						//answer = results[0].name;
+						fillInBlankAnswerGrab(results);
+						
+					}
+				else if(callbackResult.type == 2)
+				{
+					$("#questionContent").empty();
+					for(var i = 0; i < options.length; i++)
+					{
+						for(var j = 0; j < results.length; j++)
+						{
+							if(results[i].count > 0 && results[i].correct)
+							{
+								addHTML = '<div = class = "row"><label for="check'+i+'"></label><button circle = "circle'+i+'" circleGreen = true class = "btn btn-default" id="mButton" style="text-align: left;white-space: normal;background-color:#FEFE6F;width:100%; border-color:green; border-width:5px;cursor:default" optID = "'+results[i].id+'" box = "check'+i+'" data-toggle="buttons">'+results[i].name+'</button><div>';
+								break;
+							}
+							else if(results[i].count > 0 && !results[i].correct)
+							{
+								addHTML = '<div = class = "row"><label for="check'+i+'"></label><button circle = "circle'+i+'" circleGreen = true class = "btn btn-default" id="mButton" style="text-align: left;white-space: normal;background-color:#FEFE6F;width:100%;border-color:red; border-width:5px;cursor:default" optID = "'+results[i].id+'" box = "check'+i+'" data-toggle="buttons">'+results[i].name+'</button><div>';
+								break;
+							}
+							else if(results[i].count == 0 && results[i].correct)
+							{
+								addHTML = '<div = class = "row"><label for="check'+i+'"></label><button circle = "circle'+i+'" circleGreen = false class = "btn btn-default" style="text-align: left;white-space: normal;width:100%;border-color:green; border-width:5px;cursor:default" id="mButton" optID = "'+results[i].id+'" box = "check'+i+'" data-toggle="buttons">'+results[i].name+'</button><div>';
+								break;
+							}
+							else
+							{
+								addHTML = '<div = class = "row"><label for="check'+i+'"></label><button circle = "circle'+i+'" circleGreen = false class = "btn btn-default" style="text-align: left;white-space: normal;width:100%;cursor:default" id="mButton" optID = "'+results[i].id+'" box = "check'+i+'" data-toggle="buttons">'+results[i].name+'</button><div>';
+							}
+						}
+						$("#questionContent").append(addHTML);
+					}
+					
+				}
+				
+				else if(callbackResult.type == 3)
+				{
+				//$('#myModal').modal('show');
+				//console.log(results[0].name);
+					//$("#textBox").append(results[0].name);
+					//document.getElementById("textBox").innerHTML = results[0].name;
+					//answer = results[0].name;
+					fillInBlankAnswerGrab(results);
+					
+				}
+				
+				var data = result.feedback;
+				if(data == "undefined" || data == null)
+					{
+						data = "";
+					}
+				data = data.replace(/(<p[^>]+?>|<p>|<\/p>)/img, "");
+				document.getElementById("questionFeedback").innerHTML = data;
+				sessionStorage.setItem("answer", JSON.stringify(answer));
+		        
+				}
+			else
+				{
+					answer = null;
+					sessionStorage.setItem("answer", JSON.stringify(answer));
+					console.log("no answer available");
+				}
+		}
+	else
+		{
+		
+		}
+	MathJax.Hub.Queue(["Typeset",MathJax.Hub], function(){$("#questionTitle").css("visibility","");
+	$("#questionQuestion").css("visibility","");
+	$("#questionContent").css("visibility","");
+	$("#saveAnswer").css("visibility", "");
+	});
+	$('#loadClassListSpinner').hide();
+	//$('#myModal').modal('hide');
+};
+
+//Fills in fill in blank or numeric answer
+function fillInBlankAnswerGrab(data)
+{
+	for(var j = 0; j< data.length; j++)
+	{
+		//If the answer has count > 0 then its our answer
+		if(data[j].count > 0)
+		{
+			if(data[j].correct)
+			{
+				document.getElementById("textAnswer").innerHTML = data[j].name;
+				$("#textBox").css("border-width","5px");
+				$("#textBox").css("border-color","green");
+				$("#answerIcon").append('<span class ="glyphicon glyphicon-ok" style="color:green"></span>');
+			}
+			else
+			{
+				$("#answerIcon").append('<span class ="glyphicon glyphicon-remove" style="color:red"></span>');
+				$("#textBox").css("border-width","5px");
+				$("#textBox").css("border-color","red");
+			}
+			document.getElementById("textBox").innerHTML = data[j].name;
+			answer = data[j].name;
+		}
+		else
+		{
+			document.getElementById("textAnswer").innerHTML = data[j].name;
+		}
+	}
+}

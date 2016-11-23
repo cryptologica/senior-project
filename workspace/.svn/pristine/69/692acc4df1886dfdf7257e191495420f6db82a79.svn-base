@@ -1,0 +1,169 @@
+
+img#logo {
+	height: 65px;
+}
+
+#mainNavbar{
+  padding-top: 10px;
+}
+
+.spinner {
+  display: inline-block;
+  opacity: 0;
+  width: 0;
+
+  -webkit-transition: opacity 0.25s, width 0.25s;
+  -moz-transition: opacity 0.25s, width 0.25s;
+  -o-transition: opacity 0.25s, width 0.25s;
+  transition: opacity 0.25s, width 0.25s;
+}
+
+.has-spinner.active {
+  cursor:progress;
+}
+
+.has-spinner.active .spinner {
+  opacity: 1;
+  width: auto; 
+}
+
+a[disabled] { 
+	pointer-events: none; 
+}
+
+body {
+	visibility: hidden;
+}
+
+/* Add bottom border to navbar dropdown menus */
+.dropdownHighlight{
+	border-bottom: 1px solid;
+}
+
+/* Courtesy of http://stackoverflow.com/questions/31196980/using-a-glyphicon-as-an-li-bullet-point-bootstrap-3 with modification */
+.presentBullet:before {
+    /*Using a Bootstrap glyphicon as the bullet point*/
+    content: "\e080";
+    font-family: 'Glyphicons Halflings';
+
+    float: left;
+    margin-left: 40px;
+    margin-right: 20px;
+    color: #000000;
+}
+
+.max-width100
+{
+	max-width: 100%;
+}
+
+#contentHolder
+{
+	width: 100%;
+}
+
+/*if the screen is larger than 900 pixels we make the block container smaller */
+@media (min-width: 900px)
+{
+	.centeredBlockContainer {
+	 max-width: 80vh;
+	 text-align: left;
+	 display: block;
+	 margin-left: auto;
+	 margin-right: auto;
+	}
+	
+	
+}
+
+/*CSS for charts*/
+.domain {
+  fill: none;
+  stroke: black;
+  stroke-width; 1;
+}
+.range {
+  fill: none;
+  stroke: black;
+  stroke-width; 1;
+}
+.horizontalGrid {
+	fill : none;
+	shape-rendering : crispEdges;
+	stroke : white;
+	stroke-width : 1px;
+}
+
+ div.charttooltip
+{
+/* CSS style pointers were gathered from this stack voerflow post: http://stackoverflow.com/questions/1537025/jquery-tooltip-plugin-tooltips-showing-at-bottom-of-page */
+position: absolute;
+z-index: 9999999;
+border: 1px solid #111;
+border-radius: 5px;
+background-color: #eee;
+padding: 5px;
+opacity: 0.85;
+text-align: center;
+display: inline-block;
+}
+
+.resultTableHeader
+{
+	background:#efefef;
+}
+
+.clickableTableRow
+{
+	background: #fcfcfc;
+}
+
+.pollCorrectAnswer
+{
+	color: green;
+	font-weight: bold;
+}
+
+.pollIncorrectanswer
+{
+	font-style: italic;
+}
+
+.pollMostPopularAnswer
+{
+	
+}
+
+.collapsyRow
+{
+ 	margin:0px;
+ 	margin-top:10px;
+ 	padding-top:10px;
+	border-width: 10px;
+    border-top: thin solid lightgrey;
+} 
+
+.collapsyRow2
+{
+ 	margin:0px;
+    border-top: thin solid lightgrey;
+    min-height: 3em;
+}
+
+.resultsExplorer {
+  max-height: 80%;
+  overflow-y: auto;
+
+  .modal-body {
+    max-height: none;
+    text-align: center;
+  }
+}
+
+/* Prevent modal open action forcing the page to jump to top */
+body.modal-open {
+    overflow: visible;
+}
+
+
+

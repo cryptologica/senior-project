@@ -1,0 +1,79 @@
+/**
+ * 
+ */
+
+//window.onload = initialize();
+$(document).ready(initialize());
+
+var baseURL;
+
+function initialize()
+{
+	var courseID = sessionStorage.getItem("courseID");
+	baseURL = sessionStorage.getItem("baseURL");
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/courses/" + courseID + "/lectures",
+	    success: getLecture,
+	    error: getLecture
+	    });
+};
+
+$(document).on('click', '#lectureGroup', function(event)
+		{
+			event.preventDefault();
+		});
+
+$(document).on('click', '#lecture', function(event)
+		{
+			event.preventDefault();
+			var lectureID = $(this).attr("lectureID");
+			sessionStorage.setItem("lectureID", lectureID);
+			console.log(lectureID);
+			$.ajax({
+			    method : 'GET',
+			    ContentType: 'application/json', 
+			    url : baseURL +"/lecture/" + lectureID,
+			    success: viewQuestionsCallback,
+			    error: viewQuestionsCallback
+			    })
+		});
+
+function viewQuestionsCallback(result, error)
+{
+	if(error == "success")
+		{
+			if(result.QS.length > 0)
+				{
+					//loadPage("");
+				}
+			else
+				{
+					//give error notice that lecture holds no questions
+				}
+		}
+	else
+		{
+			//if callback fails
+		}
+}
+
+function getLecture(result, error)
+{
+	if(error == "success")
+		{
+			console.log("working ");
+			console.log(result);
+			for(var i = 0; i< result.Lectures.length; i++)
+				{
+					var html = '<a class = "thumbnail col-md-4" href="#" id="lecture" lectureID = "'+result.Lectures[i].lectureId+'" style="margin: 20px"><h1 class = "text-center">'+result.Lectures[i].name+'</h1></a>';
+					$("#lectureList").append(html);
+				}
+			
+		}
+	else
+		{
+			console.log("not working");
+		}
+};

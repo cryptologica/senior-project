@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Student login</title>
+<link rel="stylesheet" type="text/css" href="../studentCSS/style.css">
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+  <script src="../studentJS/login.js"></script>
+</head>
+<body>
+
+<header>
+ <img id="logo" src="../pic/Logo.png">
+
+<br>
+<br>
+<br>
+<br>
+<br>
+
+
+<br>
+<br>
+<br>
+<br>
+
+<ul id = "menuContainer">
+<li>Welcome to Turing Point</li>
+</ul>	
+</header>
+<br>
+
+
+<form  id = "form" action = "" onsubmit="return authenticate();">
+	<input type = "text" id = "ids" placeholder="E-mail">
+	<br>
+	<input type = "password" id ="password" placeholder="Password">
+	<br>
+	<input id="loginButton" type="submit" value="Login">
+</form>
+<a href = "newUser.html">
+<input id = "button" type="submit" value = "create user">
+</a>
+</body>
+</html>

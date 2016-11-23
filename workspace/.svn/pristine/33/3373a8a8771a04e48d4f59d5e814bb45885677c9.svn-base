@@ -1,0 +1,28 @@
+/* Stop button */
+.btn-square {
+	width: 31px;
+	height: 31px;
+}
+
+/* Stop symbol on stop buttons */
+.glyphicon-stop {
+	right: 5px;
+	top: -0.5px;
+}
+
+#side-menu-parent {
+	overflow-y: auto;
+	height: 75vh;
+}
+
+
+div#side-menu.in,
+div#side-menu.collapsing {
+    display: block!important;
+}
+
+.sidebar
+{
+ overflow-y: scroll;
+ max-height:550px;
+}

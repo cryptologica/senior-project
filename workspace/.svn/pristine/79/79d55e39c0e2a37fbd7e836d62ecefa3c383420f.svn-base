@@ -1,0 +1,70 @@
+package com.turingpoint.dbmodel.db.persister;
+
+import java.util.List;
+
+import org.hibernate.Criteria;
+import org.hibernate.Session;
+import org.hibernate.criterion.Restrictions;
+
+import com.turingpoint.dbmodel.db.mapping.ActiveQuestion;
+import com.turingpoint.dbmodel.db.mapping.HibernateUtil;
+import com.turingpoint.dbmodel.db.mapping.Question;
+import com.turingpoint.dbmodel.db.mapping.QuestionOption;
+import com.turingpoint.dbmodel.model.QuestionType;
+
+public class QuestionPersister extends HibernateUtil{
+
+	public static Question createQuestion(Long lectureId, int points, String questionContent, String title,
+			QuestionType type, Long courseId) {
+		Question question = new Question();
+		question.setLectureId(lectureId);
+		question.setPoints(points);
+		question.setQuestion(questionContent);
+		question.setTitle(title);
+		question.setType(type);
+		question.setVersion(0);
+		question.save();
+		
+		/*
+		// Create active question entry for future starting / stopping
+		ActiveQuestion activeQuestion = new ActiveQuestion();
+		activeQuestion.setActiveQuestionId(courseId, question.getQuestionId());
+		activeQuestion.setActive(false);
+		activeQuestion.save();
+		*/
+		
+		return question;
+	}
+
+	/**
+	 * Start a question.
+	 * @param courseId
+	 * @param questionId
+	 */
+	public static void startQuestion(Long courseId, Long questionId){
+		
+		System.out.println("Starting: courseID: " + courseId + ", Question Id: " + questionId);
+		
+		ActiveQuestion activeQuestion = new ActiveQuestion();
+		activeQuestion.setActiveQuestionId(courseId, questionId);
+		activeQuestion.save();
+	}
+	
+	public static void endQuestion(Long courseId, Long questionId){
+		ActiveQuestion activeQuestion = ActiveQuestion.getActiveQuestion(courseId, questionId);
+		activeQuestion.delete();
+	}
+	
+	@SuppressWarnings("unchecked")
+	public static List<ActiveQuestion> getActiveQuestions(Long classId) {
+		Session session = null;
+	    try{
+	        session = getSession();
+			Criteria criteria = session.createCriteria(ActiveQuestion.class);
+			return (List<ActiveQuestion>) criteria.add(Restrictions.eq("classId", classId)).list();
+	      } finally {
+	        session.close();
+	      }
+	}
+
+}

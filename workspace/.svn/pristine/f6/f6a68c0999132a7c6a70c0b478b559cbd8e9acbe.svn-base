@@ -1,0 +1,158 @@
+// Do when document loads
+$(document).ready(function() {
+	// Default is student role, so hide access code on initialization
+	$('.access-code').hide();
+	
+	// When click "Submit" (for registration)
+	$(document).on('click', '#registerBtn', function(event) {
+		
+		var FName = $('input[name="fName"]').val();
+		var LName = $('input[name="lName"]').val();
+		var Email = $('input[name="email"]').val();
+		var Pass = $('input[name="password"]').val();
+		var PassConfirm = $('input[name="passwordConfirm"]').val();
+		var Role = $('input[name="role"]:checked').val()
+		var StudentID = $('input[name="studID"]').val();
+		var AccessCode = $('input[name="accessCode"]').val();
+
+		var url = sessionStorage.getItem("baseURL") + "/users/create";
+
+		if (FName == "" || LName == "" || Email == "" || Pass == "") {
+			var alert = generateAlert("One or more required fields are empty!", 3)
+			$('.registrationForm').append(alert);
+			return;
+		}
+
+		if (!validateEmail(Email)) {
+			var alert = generateAlert("Please enter a valid email!", 3)
+			$('.registrationForm').append(alert);
+			return;
+		}
+
+		if (Pass != PassConfirm) {
+			var alert = generateAlert("Passwords do not match!", 3)
+			$('.registrationForm').append(alert);
+			return;
+		}
+
+		if (Role == ("STUDENT")) {
+			if (StudentID == "") {
+				var alert = generateAlert("StudentID is required for students.", 3)
+				$('.registrationForm').append(alert);
+				return;
+			}
+			
+			var data = new Object();
+			data.email = Email;
+			data.password = Pass;
+			data.role = Role;
+			data.studentId = StudentID;
+			data.fname = FName;
+			data.lname = LName;
+			data.code = "";
+			
+			// Turn on spinner
+			$(this).addClass('active');
+
+			$.ajax({
+				  method: "POST",
+				  url: url,
+				  contentType: "application/json",
+				  data: JSON.stringify(data),
+				  success: registrationCallback,
+				  error: registrationErrorCallback
+				});
+		}
+		else if (Role == ("INSTRUCTOR")) {
+			if (AccessCode == "") {
+				var alert = generateAlert("You must enter an access code to register as an instructor.", 3)
+				$('.registrationForm').append(alert);
+				return;
+			}
+
+			var data = new Object();
+			data.email = Email;
+			data.password = Pass;
+			data.role = Role;
+			data.studentId = "";
+			data.fname = FName;
+			data.lname = LName;
+			data.code = AccessCode;
+
+			// Turn on spinner
+			$(this).addClass('active');
+			
+			$.ajax({
+				  method: "POST",
+				  url: url,
+				  contentType: "application/json",
+				  data: JSON.stringify(data),
+				  success: registrationCallback,
+				  error: registrationErrorCallback
+				});
+		}
+		else {
+			var alert = generateAlert("You must select a role.", 3)
+			$('.registrationForm').append(alert);
+			return;
+		}
+	});
+
+	// When click "Cancel"
+	$(document).on('click', '#cancelButton', function(event) {
+		sessionStorage.setItem("currPage", "login");
+		loadPage("login");
+	});
+
+	//When user clicks on
+	$(document).on('change', 'input[name="role"]', function(event) {
+		if ($(this).val() == "INSTRUCTOR") {
+			// Show access code
+			$('.access-code').show();
+			
+			// Hide studentID from instructors
+			$('input[name="studID"]').closest('.form-group').hide();
+		}
+		else {
+			$('.access-code').hide();
+			$('input[name="studID"]').closest('.form-group').show();
+		}
+	});
+});
+
+/**
+ * Returns true if it's a valid email.
+ * Returns false otherwise.
+ * Source: StackOverflow: http://stackoverflow.com/questions/46155/validate-email-address-in-javascript
+ * @param email
+ * @returns boolean
+ */
+function validateEmail(email) {
+    var re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(email);
+}
+
+/**
+ * Called when a response from the server comes back
+ * about registering a user.
+ * @param result Data from server
+ * @param status If "success", no error
+ */
+function registrationCallback(result, status) {
+	if (status == 'success') {
+		console.log("Sucessfully registered! Redirecting to login page...");
+		$('#registerBtn').removeClass('active');
+		sessionStorage.setItem("currPage", "login");
+		loadPage("login");
+	}
+};
+/**
+ * Called when an error occurs about registering a user.
+ * @param result
+ * @param status
+ */
+function registrationErrorCallback(result, status) {
+	$('#registerBtn').removeClass('active');
+	var alert = generateAlert(result.responseJSON.msg, 4);
+	$('.registrationForm').append(alert);
+}

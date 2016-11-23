@@ -1,0 +1,234 @@
+$(document).ready(function() {
+	
+	goHomeIfValid(false);	// If already logged in, go to homepage
+	
+	$('#loginSpinner').hide();
+	
+	var existingEmail = Cookies.get("email");
+	if(existingEmail != null){
+		$('input[name="userID"]').val(existingEmail);
+		$('#rememberMe').prop('checked', true);
+		$('input[name="password"]').focus();
+	}
+});
+
+// Clicks "Register" button on login page
+$(document).on('click', '#registerButton', function(event) {
+	sessionStorage.setItem("currPage", "register");
+	loadPage("register");
+});
+
+// Login when the user hits enter
+$(document).keydown(function (e) {
+	 var key = e.keyCode;
+	 if(key == 13)  // the enter key code
+	  {
+		 $('#loginBtn')[0].click();
+	    return false;  
+	  }
+	});   
+
+
+// Send login request when loginButton is clicked
+$(document).on('click','#loginBtn',function(event){
+		
+		var userID = $('input[name="userID"]').val();
+		var password = $('input[name="password"]').val();
+		
+		var url = sessionStorage.getItem('baseURL') + "/login";
+
+		if (userID == "" || password == "") {
+			var alert = generateAlert("One or more required fields are empty", 3);
+			$('#errorBlock').html(alert);
+			return;
+		}
+		if (!validateEmail(userID)) {
+			var alert = generateAlert("Invalid Email", 3);
+			$('#errorBlock').html(alert);
+			return;
+		}
+		
+		// If "Remember Me" is checked, save email for 30 days
+		if(	$('#rememberMe').is(':checked') )
+			Cookies.set("email", userID, { expires: 30 });
+		else
+			Cookies.remove("email");
+		
+		Cookies.set("Authorization", "Basic " + btoa(userID + ":" + password), { expires: 30 });
+		
+		var data = new Object();
+		data.email = userID;
+		data.password = password;
+
+		// Disable login button
+		$(this).attr("disabled", true);
+		
+		// Show spinner so user knows it's "thinking"
+		$('#loginSpinner').show();
+		
+		$.ajax({
+			  method: "POST",
+			  url: url,
+			  contentType: "application/json",
+			  timeout: 10000,
+			  data: JSON.stringify(data),
+			  success: loginSuccessCallback,
+			  error: loginErrorCallback
+			});
+});
+
+/**
+ * This is called to initialize anything on the Login page.
+ */
+function initLoginPage() {
+	$('#loginButton').button();
+	$('#registerButton').button();
+}
+
+
+/**
+ * This is called when a response from the
+ * server is received about logging in.
+ * @param status
+ * @param result
+ */
+function loginSuccessCallback(result, status) {
+	
+	// Stop spinner, we successfully logged in
+	$('#loginSpinner').hide();
+	
+	// Re-enable login button
+	$('#loginBtn').attr("disabled", false);
+	
+	var userID = result.userId;
+	var role = result.role;
+	var name = result.fname + " " + result.lname;
+
+	console.log("Login successful: userId="+userID+" role="+role+" name="+name);
+
+	// Store user info for later use
+	sessionStorage.setItem('currUser', name);
+	sessionStorage.setItem('userID', userID);
+	sessionStorage.setItem('role', role);
+
+	if(!goHomeIfValid(true))
+		loadPage("login");	// Something is not set, reload login page
+};
+
+/**
+ * If everything is set properly then load the homepage (based on user's Role)
+ * @param loggingIn : If calling this method after a successful login
+ */
+function goHomeIfValid(loggingIn){
+	var currUser = sessionStorage.getItem('currUser');
+	var userID = sessionStorage.getItem('userID');
+	var role = sessionStorage.getItem('role');
+	
+	if (currUser != null && userID != null && role != null && (role == "STUDENT" || role == "INSTRUCTOR") ) {
+		if(role == "STUDENT")
+		{
+			if(loggingIn)
+				loadPage("home_student");
+			else
+				loadPageParams("home_student", "msg=loggedin");
+		}
+		else
+		{
+			if(loggingIn)
+				loadPage("home");
+			else
+				loadPageParams("home", "msg=loggedin");
+		}
+		return true;
+	}
+	return false;
+}
+
+/**
+ * This is called when an error response from the
+ * server is received about logging in.
+ * @param status
+ * @param result
+ */
+function loginErrorCallback(result, status) {
+	$('#loginSpinner').hide();
+	$('#loginBtn').attr("disabled", false);
+	if (status == "timeout") {
+		var alert = generateAlert("Connection Timeout.", 4)
+		$('#errorBlock').html(alert);
+	}
+	else {
+		if (typeof result.responseJSON !== 'undefined') {
+			var alert = generateAlert(result.responseJSON.msg, 4);
+			$('#errorBlock').html(alert);
+		}
+		else if(result.status == 401){
+			var alert = generateAlert("Invalid username / password.", 4);
+			$('#errorBlock').html(alert);
+		}
+		else {
+			var alert = generateAlert("No response was received from the server.", 4);
+			$('#errorBlock').html(alert);
+		}
+	}
+};
+
+
+/**
+ * Click "Forgot Password" button on password request form
+ */
+$(document).on('click', '#forgotPwButton', function(event) {
+	$('#resetForm').click();
+	$('#formError').text('');
+});
+
+
+/**
+ * Click "Submit" button on password request form
+ */
+$(document).on('click', '#formSubmit', function(event) {
+	event.preventDefault();
+	
+	var valid = true;
+	var email = $('#emailInput').val().trim();
+	// Make sure something was entered
+	if (email.length <= 0) {
+		valid = false;
+		$('#formError').html( generateAlert("Email address cannot be empty.", 3) );
+	}
+	if (valid) {
+		var url = sessionStorage.getItem("baseURL") + "/login/forgot";
+		var data = JSON.stringify({
+				"email": email
+		});
+		$.ajax({
+		    type: 'POST',
+		    url: 	url,
+		    data: data,
+		    contentType: "application/json",
+		    dataType: 'json',
+		    success: function(data, status){
+		    	// If we don't get an error back, then process the data
+		    	if (status == "success") {
+			    	$("#myModal").modal("hide");
+
+					var alert = generateAlert("Check your email account for your recovered password.", 1);
+					$('#errorBlock').html(alert);
+		    	}
+		    	else {
+		    		alert("There was an error adding the course.");
+		    	}
+		    },
+	        error: function(jqXHR, exception) {
+	            if (jqXHR.status === 0) {
+	                alert('Not connect.\n Verify Network.');
+	            } else if (jqXHR.status == 400) {
+					var alert = generateAlert("Email address not found, please check it and try again.", 4);
+					$('#formError').html(alert);
+	            } else {
+	                alert('Uncaught Error.\n' + jqXHR.responseText);
+	            }
+	        }
+		});
+	}
+});

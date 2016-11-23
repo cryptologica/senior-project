@@ -1,0 +1,243 @@
+
+// function to start when the page is loaded
+window.onload = initialize();
+
+
+//Click event for the quiz button
+$(document).on('click', '#takeQuiz', function(event)
+{
+	event.preventDefault();
+	var courseID = sessionStorage.getItem("courseID");
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/courses/" + courseID + "/status",
+	    success: takeQuizCallback,
+	    error: takeQuizCallback
+	    });
+});
+
+//event handler for switching to another class
+$(document).on('change', '#courseSelect', function(event)
+{
+	event.preventDefault();
+	//show load modal, wait until all variables are in place
+	$('#myModal').modal('show');
+	document.getElementById("formError").innerHTML = "";
+	var name = $('#courseSelect option:selected').attr('courseName');
+	var id = $('#courseSelect option:selected').attr('courseId');
+	sessionStorage.setItem("courseID", id);
+	sessionStorage.setItem("courseName", name);
+	
+	//hide load modal
+	$('#myModal').modal('hide');
+	loadPage("home_student");
+});
+
+//event handler for switching to another class
+$(document).on('click', '#addCourse', function(event)
+{
+	event.preventDefault();
+	loadPage("addClass_student");
+});
+
+//Click event for the review button
+$(document).on('click', '#review', function(event)
+{
+	event.preventDefault();
+	//show load modal, wait until all variables are in place
+	//$('#myModal').modal('show');
+	
+	//Get variables from server for quiz page, save variable in session
+
+	//hide load modal
+	//$('#myModal').modal('hide');
+	//document.location.href = "./quiz_student.html";
+});
+
+//global variables
+
+//userid number
+var userid = 1;
+//default url
+var baseURL;
+var currentPage = "";
+//current course's id
+var courseID = -1;
+var courseName = "";
+var quizBool = false;
+
+/**
+ * Main function to be run when page is opened
+ * @param page : current page
+ */
+function initialize()
+{
+	
+	baseURL = sessionStorage.getItem("baseURL");
+	userid = sessionStorage.getItem('userID');
+	
+	 $.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/users/" + userid + "/courses",
+		    success: setClass
+		    });
+	 
+};
+
+//callback for initializing a on the page
+//If no course exist -> go to add course page, else set first course as default course
+function setClass(result, error)
+{
+	document.getElementById("quizzes").innerHTML = '';
+	var errMSG = sessionStorage.getItem("errMSG");
+	if(errMSG != null && errMSG != "undefined")
+		{
+		$('#formError').html( generateAlert(errMSG, 2) );
+		}
+	
+	if(error == "success")
+	{
+		
+		$('#myModal').modal('show');
+		var courses = result.Courses;
+		var classHTML = "";
+		if(courses.length == 0)
+		{
+			loadPage("addClass_student");
+		}
+		else
+		{
+			var courseDropdown =
+				  '<div style="margin-top: 15px;" class="row" id = "studentNav">'+
+				    '<div class="col-md-1">'+
+				      '<p class="lead text-left">Course:</p>'+
+				    '</div>'+
+				    '<div class="col-md-3">'+
+				    '	<select class="form-control" id="courseSelect">';
+			
+			// Add course to list of courses on homepage
+			for (var i = 0; i < courses.length; i++) {
+				var courseID = courses[i].courseId;
+				var courseName = courses[i].name;
+				courseDropdown += '<option id = "class" courseId="' + courseID + '" courseName="' + courseName + '">' + courseName + '</option>';
+			}
+			courseDropdown +=
+				'</select>'+
+				'</div>'+
+				'<div class="col-md-3">'+
+			    	'<button type="button" id="addCourse" class="btn btn-outline btn-primary btn-sm" data-toggle="modal" data-target="#myModal">Add Course</button>'+
+			  	'</div>'+	
+				'</div>'+
+			  	'<div id="courseContent"></div>';
+			
+			$("#courses").append(courseDropdown);
+			
+			var courseID = sessionStorage.getItem('courseID');
+			
+			if(courseID != null){
+				$('[courseid="' + courseID + '"]').prop('selected', true);	// Set as selected course
+			}
+			
+			//set up homepage to corresponding class
+			courseID = sessionStorage.getItem("courseID");
+			if(courseID == "undefined" || courseID == null)
+			{
+				courseID = courses[0].courseId;
+				sessionStorage.setItem("courseID", courseID);
+				var courseName = courses[0].name;
+				sessionStorage.setItem("courseName", courseName);
+				//$("#className").append(courseName);
+				document.getElementById("className").innerHTML = courseName;
+			}
+			else
+			{
+				var courseName = sessionStorage.getItem("courseName");
+				document.getElementById("className").innerHTML = courseName;
+			}
+			
+			
+			//method to get rest of data
+			quizAvail(courseID);
+		}
+	}
+	else
+	{
+		$('#formError').html( generateAlert("Failed to get courses", 4) );
+	}
+};
+
+
+function quizAvail(courseID)
+{	
+	sessionStorage.setItem('courseID', courseID);
+	$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/courses/" + courseID + "/status",
+		    success: quizAvailCallback,
+		    error: quizAvailCallback
+		    });
+
+	
+};
+
+function quizAvailCallback(results, error)
+{
+	if(error = "success")
+	{
+		console.log(results);
+		if(results.QS.length > 0)
+		{
+			quizBool = true;
+			document.getElementById("bell").style.color = "green";
+			for(var i = 0; i < results.QS.length; i++)
+				{
+					var HTML = '<div class = "list-group-item">'+results.QS[i].title+'</div>';
+					$("#quizzes").append(HTML);
+				}
+			//document.getElementById("quizzes").innerHTML = '<div class = "list-group-item">Questions</div>';
+		}
+		else
+		{
+			quizBool = false;
+			document.getElementById("bell").style.color = "red";
+			document.getElementById("quizzes").innerHTML = '<div class = "list-group-item">N/A</div>';
+		}
+	}
+	else
+	{
+		$('#formError').html( generateAlert("Question set cannot be found", 4) );
+	}
+	$('#myModal').modal('hide');
+};
+
+function takeQuizCallback(results, error)
+{
+	if(error = "success")
+	{
+		$("#quizzes").empty();
+		if(results.QS.length > 0)
+		{
+			document.getElementById("bell").style.color = "green";
+			for(var i = 0; i < results.QS.length; i++)
+				{
+					var HTML = '<div class = "list-group-item">'+results.QS[i].title+'</div>';
+					$("#quizzes").append(HTML);
+				}
+			loadPage("quiz_student");
+		}
+		else
+		{
+			document.getElementById("bell").style.color = "red";
+			document.getElementById("quizzes").innerHTML = '<div class = "list-group-item">N/A</div>';
+			$('#formError').html( generateAlert("There is no quiz available.", 2) );
+		}
+	}
+	else
+	{
+		$('#formError').html( generateAlert("Question set cannot be found", 4) );
+	}
+	$('#myModal').modal('hide');
+};

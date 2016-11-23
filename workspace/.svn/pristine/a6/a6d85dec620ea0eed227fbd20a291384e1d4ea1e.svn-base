@@ -1,0 +1,322 @@
+
+// function to start when the page is loaded
+window.onload = initialize();
+
+//event handler for getting question detail
+$(document).on('click', '#question', function(event)
+{
+	event.preventDefault();
+	
+	//Get variables from server for quiz page, save variable in session
+
+	//get questionId and name from class list
+	questionID = event.currentTarget.name;
+	sessionStorage.setItem("questionID", questionID);
+	document.getElementById("formError").innerHTML = "";
+	$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/question/" + questionID,
+		    success: questionCallback,
+		    error: questionCallback
+		    });
+
+});
+
+//event handler for saving an answer
+$(document).on('click', '#options', function(event)
+{
+	event.preventDefault();
+	document.getElementById("formError").innerHTML = "";
+	//Get variables from server for quiz page, save variable in session
+	
+	//get questionId and name from class list
+	var answer = $(this).attr("name");
+	sessionStorage.setItem("answer", answer);
+});
+
+var answer;
+//event handler for sending answer to server
+$(document).on('click', '#saveAnswer', function(event)
+{
+	
+	event.preventDefault();
+	var courseID = parseInt(sessionStorage.getItem("courseID"));
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/courses/" + courseID + "/status",
+	    success: quizCheckCallback,
+	    error: quizCheckCallback
+	    });
+});
+
+function initialize()
+{
+	baseURL = sessionStorage.getItem("baseURL");
+	userid = sessionStorage.getItem('userID');
+	courseID = parseInt(sessionStorage.getItem("courseID"));
+	sessionStorage.setItem("answer", "");
+	$.ajaxSetup({
+	    cache: false
+	});
+	$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/courses/" + courseID + "/status",
+		    success: quizAvailCallback,
+		    error: quizAvailCallback
+		    });
+};
+
+function saveAnswer()
+{
+	var questionID = sessionStorage.getItem("questionID");
+	var answer = sessionStorage.getItem("answer");
+	if(answer != null && answer != "" && type == 0)
+	{
+		//Get variables from server for quiz page, save variable in session
+
+		var q = {"userId" : userid, "optionId" : answer, "version" : version};
+		
+		var html = '<span class="glyphicon glyphicon-ok" style="color:green"></span>';
+		var callbackResult = JSON.parse(sessionStorage.getItem("callbackResult"));
+		var options = callbackResult.options;
+		$("#questionContent2").empty();
+		for(var i = 0; i < options.length; i++)
+		{
+			addHTML = '<label class="btn btn-default" id="options" name="'+options[i].optionId+'" style="text-align: left;white-space: normal;"><input class="btn btn-default" type="radio" id="option" name="'+options[i].optionId+'" autocomplete="off"><i class="fa fa-circle"></i>   '+options[i].text+'</label>';
+			if(options[i].optionId == answer)
+				{
+					addHTML = '<label class="btn btn-default active" id="options" name="'+options[i].optionId+'" style="text-align: left;white-space: normal;"><input class="btn btn-default" type="radio" id="option" name="'+options[i].optionId+'" autocomplete="off"><i class="fa fa-circle" style="color:green"></i>   '+options[i].text+'</label>';
+					answer = options[i].optionId;
+				}
+			$("#questionContent2").append(addHTML);
+		}
+		
+		$.ajax({
+	    	type: 'POST',
+	    	url: 	baseURL +"/question/" + questionID + "/answer",
+	    	data: JSON.stringify(q),
+	    	success: answerCallback,
+	    	error: answerCallback,
+	    	contentType: "application/json",
+	    	dataType: 'json'
+	});
+	}
+	
+	if(type == 1)
+		{
+		var answer = $("#textBox").val();
+		if(answer == "undefined" || answer == null || answer == "")
+			{
+				$('#formError').html( generateAlert("We don't like your empty answer, TRY AGAIN", 3) );
+			}
+		else
+			{
+			var q = {"userId" : userid, "response" : answer, "version" : version};
+
+			$.ajax({
+		    	type: 'POST',
+		    	url: 	baseURL +"/question/" + questionID + "/answer",
+		    	data: JSON.stringify(q),
+		    	success: answerCallback,
+		    	error: answerCallback,
+		    	contentType: "application/json",
+		    	dataType: 'json'
+		});
+			}
+		}
+	
+	if(answer == null || answer == "")
+		{
+			$('#formError').html( generateAlert("No answer selected", 3) );
+			$('#myModal').modal('hide');
+		}
+};
+
+function quizCheckCallback(result, error)
+{
+	//$('#myModal').modal('show');
+	var qid;
+	var questionID = sessionStorage.getItem("questionID");
+	for(var i = 0; i < result.QS.length; i++)
+		{
+			qid = result.QS[i].questionId;
+			if(qid == questionID)
+				{
+					saveAnswer();
+					break;
+				}
+		}
+	if(qid != questionID)
+		{
+			$('#formError').html( generateAlert("The question was no longer available.", 2) );
+			$("#qs").empty();
+			quizAvailCallback(result, error);
+		}
+	//$('#myModal').modal('hide');
+};
+
+function quizAvailCallback(result, error)
+{
+	$('#myModal').modal('show');
+	$("#studentMainNav").empty();
+	
+	//document.getElementById("studentMainNav").innerHTML = html;
+	var qs = result.QS;
+	if(error = "success" && qs.length > 0)
+	{
+		
+		questionID = qs[0].questionId;
+		sessionStorage.setItem("questionID", questionID);
+		for(var i = 0; i < qs.length; i++)
+		{
+			var addHTML = '<li class="list-group-item" id = "'+qs[i].questionId+'"><span class="glyphicon glyphicon-file"></span><a href="#Q1" id="question" name = "'+qs[i].questionId+'">'+qs[i].title+'</a></li>';
+			$("#qs").append(addHTML);
+		}
+		
+		$.ajax({
+		    method : 'GET',
+		    ContentType: 'application/json', 
+		    url : baseURL +"/question/" + questionID,
+		    success: questionCallback,
+		    error: questionCallback
+		    });
+
+	}
+	else
+	{
+		//$('#formError').html( generateAlert("Question set could not be found", 4) );
+		type = -1;
+		alert("No active questions available.  Moving to homepage.");
+		loadPage("home_student");
+	}
+	$('#myModal').modal('hide');
+};
+
+function questionCallback(result, error)
+{
+	//$('#myModal').modal('show');
+	if(error == "success")
+	{
+
+		document.getElementById("questionTitle").innerHTML = "";
+		document.getElementById("questionQuestion").innerHTML = "";
+		document.getElementById("questionContent").innerHTML = "";
+		
+		//$("#studentMainNav").empty();
+		//var html = '<button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#studentNav"><span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span></button>';
+		//$("#studentMainNav").append(html);
+		
+		console.log(result);
+		var content = result.content;
+		type = result.type;
+		var options = result.options;
+		sessionStorage.setItem("callbackResult", JSON.stringify(result));
+		var title = result.title;
+		version = result.version;
+
+		var addHTML = title+'<h2 style = "float : right"></h2>';
+		$("#questionTitle").append(addHTML);
+		$("#questionQuestion").append(content);
+
+		if(type == 0)
+		{
+			addHTML = '<div class="btn-group-vertical" id ="questionContent2" style="width:75%" data-toggle="buttons">';
+			$("#questionContent").append(addHTML);
+			for(var i = 0; i < options.length; i++)
+			{
+				addHTML = '<label class="btn btn-default" id="options" name="'+options[i].optionId+'" style="text-align: left;white-space: normal;"><input class="btn btn-default" type="radio" id="option" name="'+options[i].optionId+'" autocomplete="off"><i class="fa fa-circle"></i>   '+options[i].text+'</label>';
+				$("#questionContent2").append(addHTML);
+			}
+        
+			
+		}
+		if(type == 1)
+		{
+			addHTML = '<textarea rows="4" style="width:80%" id="textBox"></textarea>';
+			$("#questionContent").append(addHTML);
+		}
+	}
+	else
+	{
+		$('#formError').html( generateAlert("Unknown type asked", 4) );
+		console.log(type);
+	}
+
+	//$('#myModal').modal('hide');
+	userid = sessionStorage.getItem('userID');
+	questionID = sessionStorage.getItem('questionID');
+	console.log(questionID);
+	$.ajax({
+	    method : 'GET',
+	    ContentType: 'application/json', 
+	    url : baseURL +"/results/" + questionID +"/question/"+userid,
+	    success: getAnswerCallback,
+	    error: getAnswerCallback
+	    });
+};
+
+function getAnswerCallback(result, error)
+{
+	if(error=="success")
+		{
+			var results = result.results;
+			var callbackResult = JSON.parse(sessionStorage.getItem("callbackResult"));
+			var options = callbackResult.options;
+			var answer;
+			if(results.length > 0)
+				{
+				if(callbackResult.type == 0)
+					{
+						$("#questionContent2").empty();
+						for(var i = 0; i < options.length; i++)
+						{
+							addHTML = '<label class="btn btn-default" id="options" name="'+options[i].optionId+'" style="text-align: left;white-space: normal;"><input class="btn btn-default" type="radio" id="option" name="'+options[i].optionId+'" autocomplete="off"><i class="fa fa-circle"></i>   '+options[i].text+'</label>';
+							if(options[i].optionId == results[0].id)
+								{
+									addHTML = '<label class="btn btn-default active" id="options" name="'+options[i].optionId+'" style="text-align: left;white-space: normal;"><input class="btn btn-default" type="radio" id="option" name="'+options[i].optionId+'" autocomplete="off"><i class="fa fa-circle" style="color:green"></i>   '+options[i].text+'</label>';
+									answer = options[i].optionId;
+								}
+							$("#questionContent2").append(addHTML);
+						}
+					}
+				else if(callbackResult.type == 1)
+					{
+					console.log(results[0].name);
+						$("#textBox").append(results[0].name);
+						answer = results[0].name;
+					}
+				
+				sessionStorage.setItem("answer", answer);
+		        
+				}
+			else
+				{
+					console.log("error in getting answer");
+				}
+		}
+	else
+		{
+		
+		}
+	
+	$('#myModal').modal('hide');
+};
+
+function answerCallback(result, error)
+{
+	if(error == "success")
+	{
+		$('#formError').html( generateAlert("answer was saved", 1) );
+
+	}
+	else
+	{
+		$('#formError').html( generateAlert("error from server in answer callback", 3) );
+	}
+	$('#myModal').modal('hide');
+};
+
+//<span class="glyphicon glyphicon-ok" style="color:green"></span>

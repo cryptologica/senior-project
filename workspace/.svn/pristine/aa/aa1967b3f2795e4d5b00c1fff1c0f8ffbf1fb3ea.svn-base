@@ -1,0 +1,37 @@
+/**
+ * Initializations
+ */
+$(document).ready(function() {
+
+	// Remove any previously set question id
+	sessionStorage.removeItem("currQuestion");
+
+	var courseID = sessionStorage.getItem("courseID");
+	if (courseID == null) // Direct to login page if courseID not set
+		loadpage("login");
+
+	// Inject the edit tab contents into the main page portion of the question bank page
+	$("#questionEditContent").load("../pages/poll.html #edit", function() {
+		initTinyMCE();
+
+		var url = sessionStorage.getItem("baseURL") + "/questionbank/course/" + courseID + "/questions";
+		$.getJSON(url, questionListCallback);
+
+		// Tooltip Properties on Tabs
+		$('[data-toggle="tab"]').tooltip({
+			trigger : 'hover',
+			placement : 'top',
+			animate : true,
+			delay : {
+				show : 1000,
+				hide : 100
+			},
+			container : 'body'
+		});
+
+		// Sometimes screen focus is wonky, just scroll to top after
+		// initializing
+		window.scrollTo(0, 0);
+	});
+
+});

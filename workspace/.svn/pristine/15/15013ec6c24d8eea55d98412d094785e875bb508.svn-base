@@ -1,0 +1,348 @@
+package com.turingpoint.controller.courses;
+
+import java.io.InputStream;
+import javax.ws.rs.Consumes;
+import javax.ws.rs.DELETE;
+import javax.ws.rs.POST;
+import javax.ws.rs.GET;
+import javax.ws.rs.PUT;
+import javax.ws.rs.Path;
+import javax.ws.rs.PathParam;
+import javax.ws.rs.Produces;
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.core.Response;
+
+import org.json.JSONObject;
+
+import com.turingpoint.controller.ServerContext;
+import com.turingpoint.controller.ServerTypes;
+import com.turingpoint.dbmodel.db.mapping.Lecture;
+import com.turingpoint.dbmodel.db.mapping.User;
+import com.turingpoint.dbmodel.db.persister.LecturePersister;
+import com.turingpoint.dbmodel.model.Role;
+
+@Path("/lecture")
+@Produces(MediaType.APPLICATION_JSON)
+public class LectureServices {
+
+	ServerContext server = ServerContext.INSTANCE;
+	
+    @GET
+    @Path("/{lectureID}")
+    public Response GetLectureQuestions(@PathParam("lectureID") Long lectureID) 
+    {
+    	//TODO: Add authentication check here, if a user calls this and they are not an instructor we
+    	//need to use a different call structure to decide if they are allowed to view questions before returning
+    	//them.
+    	return LectureCommon.getLectureOrQuestionBankQuestions(null, lectureID, false);
+    }
+    
+    @POST
+    @Path("/create")
+    @Consumes(MediaType.APPLICATION_JSON)
+    //TODO: Finish when question persister supports this operation
+    public Response CreateLecture(InputStream inputJSON) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	
+    	//Declare
+    	long userID;
+    	long courseID;
+    	String name;
+    	Lecture newLecture;
+    	User user;
+    	
+    	
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Validate parameters
+    	try
+    	{
+	    	userID = inputObject.getLong("userId");
+	    	courseID = inputObject.getLong("courseId");
+	    	name = inputObject.getString("name");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Ensure the request is being performed by an instructor
+    	try
+    	{
+	    	//Make sure the instructor role is valid after userId is gathered
+	    	user = User.getUser(userID);
+	    	if(user.getRole() != Role.INSTRUCTOR)
+	    	{
+	    		msg = "User Not authorized";
+	    		responseObject.put("msg",msg);
+	    		return Response.status(401).entity(responseObject.toString()).build();
+	    	}
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Error Verifying User";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	//make the lecture
+    	try
+    	{
+	    	newLecture = LecturePersister.createLecture(courseID, name);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to get create lecture";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Respond
+    	responseObject.put("lectureId", newLecture.getLectureId());
+    	responseObject.put("name", newLecture.getName());
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @DELETE
+    @Path("/{lectureID}")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response DeleteLecture(InputStream inputJSON,@PathParam("lectureID") Long lectureID) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	
+    	//Declare
+    	long userID;
+    	User user;
+    	Lecture targetLecture;
+    	
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Validate parameters
+    	try
+    	{
+	    	userID = inputObject.getLong("userId");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(400).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Ensure instructor is doing this
+    	try
+    	{
+	    	//Make sure the instructor role is valid after userId is gathered
+	    	user = User.getUser(userID);
+	    	if(user.getRole() != Role.INSTRUCTOR)
+	    	{
+	    		msg = "User Not authorized";
+	    		responseObject.put("msg",msg);
+	    		return Response.status(401).entity(responseObject.toString()).build();
+	    	}
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Error Verifying User";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+
+    	//delete the lecture
+    	try
+    	{
+    		targetLecture = Lecture.getLecture(lectureID);
+    		targetLecture.delete();
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to delete lecture";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+
+    	//Respond
+    	responseObject.put("lectureId", targetLecture.getLectureId());
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @PUT
+    @Path("/{lectureID}/update")
+    @Consumes(MediaType.APPLICATION_JSON)
+    public Response EditLecture(InputStream inputJSON,@PathParam("lectureID") Long lectureID) 
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	
+    	//Declare
+    	String name;
+    	Lecture targetLecture;
+    	long userID;
+    	User user;
+    	
+    	//Validate input is json
+    	JSONObject inputObject;
+    	try
+    	{
+    		inputObject = ServerTypes.StringToJSON(inputJSON);
+    	}
+    	catch(Exception e)
+    	{
+    		//TODO: Log bad user id and stack trace
+    		msg = "Malformed Request Packet "+ inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	
+    	//Validate parameters
+    	try
+    	{
+	    	userID = inputObject.getLong("userId");
+	    	name = inputObject.getString("name");
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Request lacks required parameters: " + inputJSON.toString();
+    		responseObject.put("msg",msg);
+    		return Response.status(415).entity(responseObject.toString()).build();
+    	}
+    	
+    	//Ensure instructor is doing this
+    	try
+    	{
+	    	//Make sure the instructor role is valid after userId is gathered
+	    	user = User.getUser(userID);
+	    	if(user.getRole() != Role.INSTRUCTOR)
+	    	{
+	    		msg = "User Not authorized";
+	    		responseObject.put("msg",msg);
+	    		return Response.status(401).entity(responseObject.toString()).build();
+	    	}
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Error Verifying User";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+
+    	//Perform operation
+    	try
+    	{
+    		targetLecture = LecturePersister.updateLectureName(lectureID, name);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to rename";
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+
+    	//Respond
+    	msg = "Update Successful";
+    	responseObject.put("msg", msg);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @POST
+    @Path("/{lectureID}/addGroup")
+    @Consumes(MediaType.APPLICATION_JSON)
+    //TODO: Finish when question persister supports this operation (Not phase 1)
+    public Response AddQuestionGroupToLecture(InputStream inputJSON,@PathParam("lectureID") String lectureID)  
+    {
+    	String wildCard = "Service Not Yet Implemented";
+    	JSONObject responseObject = new JSONObject();
+    	responseObject.put("msg", wildCard);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @POST
+    @Path("/{lectureID}/removeGroup")
+    @Consumes(MediaType.APPLICATION_JSON)
+    //TODO: Finish when question persister supports this operation (Not phase 1)
+    public Response RemoveQuestionGroupFromLecture(InputStream inputJSON,@PathParam("lectureID") String lectureID)  
+    {
+    	String wildCard = "Service Not Yet Implemented";
+    	JSONObject responseObject = new JSONObject();
+    	responseObject.put("msg", wildCard);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @POST
+    @Path("/{lectureID}/publish")
+    public Response PublishLecture(@PathParam("lectureID") Long lectureID)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	
+    	try
+    	{
+    		LecturePersister.publishAllQuestionsInLecture(lectureID);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to publish questions with lectureID: " + lectureID;
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	msg = "Lecture Published";
+    	responseObject.put("msg", msg);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+    @POST
+    @Path("/{lectureID}/unpublish")
+    public Response UnPublishLecture(@PathParam("lectureID") Long lectureID)
+    {
+    	JSONObject responseObject = new JSONObject();
+    	String msg = "";
+    	
+    	try
+    	{
+    		LecturePersister.unpublishAllQuestionsInLecture(lectureID);
+    	}
+    	catch(Exception e)
+    	{
+    		msg = "Unable to publish questions with lectureID: " + lectureID;
+    		responseObject.put("msg",msg);
+    		return Response.status(500).entity(responseObject.toString()).build();
+    	}
+    	
+    	msg = "Lecture Published";
+    	responseObject.put("msg", msg);
+    	return Response.status(200).entity(responseObject.toString()).build();
+    }
+    
+}

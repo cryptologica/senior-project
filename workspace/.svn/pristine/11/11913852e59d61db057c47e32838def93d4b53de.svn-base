@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+<!--  Start - Should be present on top of head on all pages -->
+<script src="../bower_components/jquery/jquery-latest.min.js"
+	type="text/javascript"></script>
+
+<!-- JQuery cookie manager - https://github.com/js-cookie/js-cookie -->
+<script src="../js/cookieMonster.js"></script>
+
+<!-- JQuery url query manager - http://stackoverflow.com/questions/22258793/set-url-parameters-without-causing-page-refresh -->
+<script src="../js/query-string.js"></script>
+
+<!-- Favorite Icons -->
+<link rel="icon" type="image/png" href="../img/favicon-32x32.png"
+	sizes="32x32" />
+<link rel="icon" type="image/png" href="../img/favicon-16x16.png"
+	sizes="16x16" />
+
+<!-- Main js used to inject content used throughout the site, and manage session vars -->
+<script src="../js/main.js" type="text/javascript"></script>
+
+<!--  End - Should be present on top of head on all pages -->
+
+<script src="../js/managepolls.js" type="text/javascript"></script>
+
+<!-- Custom (Formerly Injected) -->
+<meta charset="utf-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="">
+<meta name="author" content="">
+
+<title>Turing Point - Clicker Replacement</title>
+
+<!-- Bootstrap Core CSS -->
+<link href="../bower_components/bootstrap/dist/css/bootstrap.min.css"
+	rel="stylesheet">
+
+<!-- MetisMenu CSS -->
+<link href="../bower_components/metisMenu/dist/metisMenu.min.css"
+	rel="stylesheet">
+
+<!-- Timeline CSS -->
+<link href="../dist/css/timeline.css" rel="stylesheet">
+
+<!-- Custom CSS -->
+<link href="../dist/css/sb-admin-2.css" rel="stylesheet">
+
+<!-- Custom Fonts -->
+<link href="../bower_components/font-awesome/css/font-awesome.min.css"
+	rel="stylesheet" type="text/css">
+
+<!-- Our CSS -->
+<link href="../css/style.css" rel="stylesheet" type="text/css">
+
+<!-- Page CSS -->
+<link href="../css/managelectures.css" rel="stylesheet" type="text/css">
+
+<!-- Bootstrap Core JavaScript -->
+<script src="../bower_components/bootstrap/dist/js/bootstrap.min.js"></script>
+
+<!-- Metis Menu Plugin JavaScript -->
+<script src="../bower_components/metisMenu/dist/metisMenu.min.js"></script>
+
+<!-- Custom Theme JavaScript -->
+<script src="../dist/js/sb-admin-2.js"></script>
+
+<!-- Modal helper library, http://bootboxjs.com/ -->
+<script src="../js/bootbox.min.js"></script>
+
+</head>
+
+<body>
+
+	<!-- Header injected here -->
+	<div id="header"></div>
+
+	<!-- Page Content -->
+	<div class="container">
+
+		<!-- Page Header -->
+		<div class="row">
+			<div class="col-md-12">
+				<h1 class="page-header">Manage Lectures</h1>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-lg-12 col-md-12 portfolio-item">
+				<div class="panel panel-primary">
+					<div id="questionBankBtn" class="panel-heading"
+						style="cursor: pointer;">
+						<div class="row">
+							<div class="col-md-1 col-xs-3">
+								<i class="fa fa-bank fa-4x"></i>
+							</div>
+							<div class="col-md-11 col-xs-9">
+								<div class="huge">Question Bank</div>
+							</div>
+						</div>
+					</div>
+					<div id="collapse1" class="panel-collapse collapse">
+						<div class="panel-body">
+							<div class="row">
+								<div class="col-md-6">
+									<label>Question Bank Questions</label>
+									<div class="list-group" id="bankQuestions"></div>
+								</div>
+								<div class="col-md-6">
+									<label>Frequently Imported Questions</label>
+									<label class="pull-right">Import Count</label>
+									<div class="list-group" id="bankQuestionsFrequent">
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+					<a data-toggle="collapse" href="#collapse1" id="questionBankToggleBtn" class="closed">
+						<div class="panel-footer">
+							Show Details <span class="fa fa-angle-down"></span>
+						</div>
+					</a>
+				</div>
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-md-12">
+				<h1 class="page-header">
+					Course Lectures <small><button type="button"
+							id="editLecturesBtn" class="btn btn-outline btn-link">Edit</button></small>
+				</h1>
+			</div>
+		</div>
+		<div class="alertDiv col-md-12 row hidden" id="editModeAlert">
+			<div class="alert alert-warning">
+				<strong>In Edit Mode:</strong> Click on a lecture to edit it, or
+				click 'Disable Edit Mode' to turn off edit mode.
+			</div>
+		</div>
+
+		<div id="lectures"></div>
+		<div class="row">
+			<div class="col-md-6 col-md-offset-3">
+				<div id="addLecture" type="button"
+					class="btn btn-primary btn-lg btn-block" data-toggle="modal"
+					data-target="#myModal">Add New Lecture</div>
+			</div>
+		</div>
+	</div>
+	<!-- /.container -->
+
+	<!-- Modal for creating a lecture -->
+	<div class="modal fade" id="myModal" tabindex="-1" role="dialog"
+		aria-labelledby="myModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"
+						aria-hidden="true">x</button>
+					<h4 class="modal-title" id="myModalLabel">New Lecture</h4>
+				</div>
+				<div class="modal-body">
+					<form role="form" lpformnum="1" _lpchecked="1"
+						onsubmit="onSubmitNewLecture(event)">
+						<div class="form-group">
+							<label>Lecture Name</label> <input id="lectureNameInput"
+								class="form-control" placeholder="ex: Introduction" required>
+						</div>
+						<button id="resetForm" type="reset" class="btn btn-default">Reset</button>
+						<div id="formError"></div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+					<button id="formSubmit" type="button" class="btn btn-primary">Create</button>
+				</div>
+			</div>
+			<!-- /.modal-content -->
+		</div>
+		<!-- /.modal-dialog -->
+	</div>
+	<!-- /.modal -->
+
+	<!-- Modal form for updating a lecture -->
+	<div class="modal fade" id="updateModal" tabindex="-1" role="dialog"
+		aria-labelledby="updateModalLabel" aria-hidden="true">
+		<div class="modal-dialog">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal"
+						aria-hidden="true">x</button>
+					<h4 class="modal-title" id="updateModalLabel">Update Course</h4>
+				</div>
+				<form role="form" lpformnum="1" _lpchecked="1">
+					<div class="modal-body">
+						<div class="form-group">
+							<label>Lecture Name</label> <input id="lectureUpdateNameInput"
+								lectureId="" class="form-control" placeholder="ex: Introduction"
+								required>
+						</div>
+						<button id="resetForm" type="reset" class="btn btn-default">Reset</button>
+						<div id="formUpdateError"></div>
+					</div>
+					<div class="modal-footer">
+						<button id="deleteLectureBtn" type="button" class="btn btn-danger"
+							data-dismiss="modal">Delete</button>
+						<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+						<button id="formUpdateSubmit" type="button"
+							class="btn btn-primary">Update</button>
+					</div>
+				</form>
+			</div>
+			<!-- /.modal-content -->
+		</div>
+		<!-- /.modal-dialog -->
+	</div>
+	<!-- /.modal -->
+
+</body>
+
+</html>

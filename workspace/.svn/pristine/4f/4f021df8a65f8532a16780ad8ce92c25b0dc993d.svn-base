@@ -1,0 +1,540 @@
+/**
+ * Instructor homepage js
+ */
+
+$(document).ready(function() {
+	
+	// Check to see if login error is displayed
+	var msg = $.query.get('msg');
+	if(msg != null){
+		if(msg == 'loggedin'){
+			$("#loginError").html('<br>' + generateAlert("You are already logged in. You may <a id='loginLogout' href='#'>logout</a> if you want to get back to the login screen.", 2));
+		}
+	}
+	
+	var role = sessionStorage.getItem('role');
+	var userID = sessionStorage.getItem('userID');
+	
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/users/" + userID + "/courses";
+
+	// Ask the server for a list of courses available for current user
+	$.getJSON(url, courseListCallback);
+});
+
+/**
+ * Instructor - Manage polls button clicked
+ */
+$(document).on('click', '.managePollsBtn', function(event) {
+	var courseID = ($(event.currentTarget).parent()).attr('id');
+	sessionStorage.setItem("courseID", courseID);
+	loadPage("managepolls");
+});
+
+/**
+ * Difference course selected on homepage
+ */
+$(document).on('change', '#courseSelect', function(event) {
+	var courseID = $('#courseSelect option:selected').attr('courseid');	// Selected course
+	sessionStorage.setItem("courseID", courseID);
+	queryString.push('courseId', courseID);
+	sessionStorage.setItem('courseID', courseID);
+	
+	// Retrieve list of courses
+	var courses =  JSON.parse(localStorage.getItem("courses"));
+
+	setHomepageHTMLByCourseID(courses, courseID);
+});
+
+function fetchRecentResults(courseID){
+	var baseRecentURL = sessionStorage.getItem("baseURL") + '/courses/'+courseID;
+	$.getJSON(baseRecentURL + "/recentlectures", function (data, status){
+		recentContentHelper('recentLectures', data);
+	});
+	$.getJSON(baseRecentURL + "/recentresults", function (data, status){
+		recentContentHelper('recentResults', data);
+	});
+	$.getJSON(baseRecentURL + "/recentstudents", function (data, status){
+		recentContentHelper('recentStudents', data);
+	});
+}
+
+function recentContentHelper(type, data){
+	
+	var htmlContent = '<div class="list-group">';
+	
+	if(type == 'recentResults'){
+		if(data.recentResults.length == 0){
+			htmlContent += '<div class="well"><h4>No Recent Results</h4></div>'
+		} else {
+			for(var i=0; i < data.recentResults.length; i++){
+				var entry = data.recentResults[i];
+				htmlContent += recentContentHTMLhelper(entry.name, entry.date, 'recentResults', entry.lectureId);
+			}
+		}
+	}
+	else if(type == 'recentLectures'){
+		if(data.recentLectures.length == 0){
+			htmlContent += '<div class="well"><h4>No Recent Lectures</h4></div>'
+		} else {
+			for(var i=0; i < data.recentLectures.length; i++){
+				var entry = data.recentLectures[i];
+				htmlContent += recentContentHTMLhelper(entry.name, entry.created, 'recentLecture', entry.lectureId);
+			}
+		}
+	}
+	else if(type == 'recentStudents'){
+		if(data.recentStudents.length == 0){
+			htmlContent += '<div class="well"><h4>No Students Enrolled.</h4> Students will have to register for the course before they can answer questions.</div>'
+		} else {
+			for(var i=0; i < data.recentStudents.length; i++){
+				var entry = data.recentStudents[i];
+				htmlContent += recentContentHTMLhelper(entry.lname + ', ' + entry.fname, '', 'recentStudents', entry.userId);
+			}
+		}
+	}
+	
+	htmlContent += '</div>';
+	$('#' + type).removeClass('row');
+	$('#' + type).html(htmlContent);
+}
+
+function recentContentHTMLhelper(name, date, classContent, id){
+    var entryHTML = '<a href="#" class="list-group-item '+classContent+'" selectionid="'+ id +'">';
+    entryHTML += '<span class="contentName">' + name + '</span>';
+    entryHTML += '<span class="pull-right text-muted small"><em>'+date+'</em>';
+    entryHTML += '</span></a>';
+    return entryHTML;
+}
+
+
+/**
+ * Recent lecture button pressed
+ */
+$(document).on('click', '.recentLecture', function(event) {
+	var lectureID = $(this).attr("selectionid");
+	sessionStorage.setItem("lectureID", lectureID);
+	loadPageParams('poll', 'lectureId=' + lectureID);
+});
+
+/**
+ * Recent lecture button pressed
+ */
+$(document).on('click', '.recentResults', function(event) {
+	var lectureID = $(this).attr("selectionid");
+	var courseID = sessionStorage.getItem('courseID');
+	sessionStorage.setItem("lectureID", lectureID);
+	sessionStorage.setItem('lectureName', $(this).find('.contentName').text());
+	
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/courses/" + courseID + "/lectures";
+
+	// Fetch the list of all lectures
+	$.getJSON(url, function(data, status){
+		var lectures = data.Lectures;
+		// Store sessions for future use
+		localStorage.setItem("lectures", JSON.stringify(lectures));
+		loadPageParams('results', 'lectureId=' + lectureID);
+	});
+});
+
+/**
+ * Recent lecture button pressed
+ */
+$(document).on('click', '.recentStudents', function(event) {
+	var studentID = $(this).attr("selectionid");
+	loadPageParams('managestudents', 'studentId=' + studentID);
+});
+
+
+/**
+ * Click "New Course" button
+ */
+$(document).on('click', '#newCourse', function(event) {
+	$('#resetForm').click();	// Reset the form
+	/*
+	setTimeout(function(){ $('#newCourse').blur(); }, 100);
+	
+	$('#myModal').on('hidden.bs.modal', function () {
+		  // do something…
+		$('#newCourse').blur();
+		});
+	
+	event.preventDefault();
+	return true;
+	*/
+});
+
+
+/**
+ * Click "Submit" button on update course modal form
+ */
+$(document).on('click', '#formUpdateSubmit', function(event) {
+	event.preventDefault();
+	
+	var valid = true;
+	var courseName = $('#courseUpdateNameInput').val().trim();
+	var courseDescr = $('#courseUpdateDescInput').val().trim();
+	// Make sure something was entered
+	if (courseName.length <= 0 || courseDescr.length <= 0) {
+		valid = false;
+		$('#formUpdateError').html( generateAlert("One or more fields were not set", 3) );
+	}
+	if (courseName.length > 100) {
+		valid = false;
+		$('#formUpdateError').html( generateAlert("Course name exceeded 100 character limit", 4) );
+	}
+	if (courseDescr.length > 400) {
+		valid = false;
+		$('#formUpdateError').html( generateAlert("Course description exceeded 400 character limit", 4) );
+	}
+	if (valid) {
+		var courseID = $('#courseSelect option:selected').attr('courseid');	// Selected course
+		var url = sessionStorage.getItem("baseURL") + "/courses/" + courseID + "/update";
+		var data = JSON.stringify({
+				"name": courseName,
+				"description": courseDescr,
+		});
+		$.ajax({
+		    type: 'PUT',
+		    url: 	url,
+		    data: data,
+		    contentType: "application/json",
+		    dataType: 'json',
+		    success: function(data, status){
+		    	// If we don't get an error back, then process the data
+		    	if (status == "success") {
+			    	$("#updateModal").modal("hide");
+		    		
+		    		// Extract the courseId
+		    		var courseID = data.courseId;
+		    		var courseName = data.name;
+		    		var courseDescr = data.description;
+
+		    		$('[courseId="' + courseID + '"]').text(courseName);	// Update course dropdown
+		    		
+		    		updateCourseInStorage(data);
+			    	
+			    	// Trigger select to update page
+			    	$('#courseSelect option:last').attr('selected', 'selected');
+			    	$('#courseSelect').trigger("change"); // Switch to newly added course (last one in list)
+		    	}
+		    	else {
+		    		alert("There was an error adding the course.");
+		    	}
+		    }
+		});
+	}
+});
+
+/**
+ * Click "Submit" button on create new course modal form
+ */
+$(document).on('click', '#formSubmit', function(event) {
+	event.preventDefault();
+	var valid = true;
+	var courseName = $('#courseNameInput').val().trim();
+	var courseDescr = $('#courseDescInput').val().trim();
+	// Make sure something was entered
+	if (courseName.length <= 0 || courseDescr.length <= 0) {
+		valid = false;
+		$('#formError').html( generateAlert("One or more fields were not set", 3) );
+	}
+	if (courseName.length > 100) {
+		valid = false;
+		$('#formError').html( generateAlert("Course name exceeded 100 character limit", 4) );
+	}
+	if (courseDescr.length > 400) {
+		valid = false;
+		$('#formError').html( generateAlert("Course description exceeded 400 character limit", 4) );
+	}
+	if (valid) {
+		var url = sessionStorage.getItem("baseURL") + "/courses/create";
+		var userID = sessionStorage.getItem("userID");
+		var data = JSON.stringify({
+				"name": courseName,
+				"description": courseDescr,
+				"userId": parseInt(userID)
+		});
+		$.ajax({
+		    type: 'POST',
+		    url: 	url,
+		    data: data,
+		    contentType: "application/json",
+		    dataType: 'json',
+		    success: function(data, status){
+		    	// If we don't get an error back, then process the data
+		    	if (status == "success") {
+			    	$("#myModal").modal("hide");
+		    		
+		    		// Extract the courseId
+		    		var courseID = data.classId;
+		    		var courseName = data.name;
+		    		var courseDescr = data.description;
+			    	$('#courseSelect').append('<option courseId="' + courseID + '">' + courseName + '</option>');
+			    	
+			    	// Add new course to the local storage
+			    	var courses = JSON.parse(localStorage.getItem("courses"));
+			    	var classId = data.classId;
+			    	if(classId != null)	// accounting for bad previous issues
+			    		data.courseId = classId;
+			    	courses.push(data);
+			    	localStorage.setItem("courses", JSON.stringify(courses));	// Store list of courses
+			    	//window.courses.push(data);	// Add new course to courses array
+			    	
+			    	if(courses.length == 1){
+						// Generate and add the HTML to the page
+						setHomepageHTMLByCourseID(courses, courseID);
+			    	}
+			    	
+			    	// TODO: Fix this
+			    	$('#courseSelect option:last').attr('selected', 'selected');
+			    	$('#courseSelect').trigger("change"); // Switch to newly added course (last one in list)
+			    	
+			    	setTimeout(function(){ $('#newCourse').blur(); }, 1000);
+		    	}
+		    	else {
+		    		alert("There was an error adding the course.");
+		    	}
+		    }
+		});
+	}
+	return false;
+});
+
+/**
+ * Instructor - Manage students button clicked
+ */
+$(document).on('click', '.manageStudentsBtn', function(event) {
+	var courseID = ($(event.currentTarget).parent()).attr('id');
+	sessionStorage.setItem("courseID", courseID);
+	loadPage("managestudents");
+});
+
+/**
+ * Instructor - Manage results button clicked
+ */
+$(document).on('click', '.manageResultsBtn', function(event) {
+	var courseID = ($(event.currentTarget).parent()).attr('id');
+	sessionStorage.setItem("courseID", courseID);
+	loadPage("manageresults");
+});
+
+
+/**
+ * Edit course button clicked
+ */
+$(document).on('click', '#editCourse', function(event) {
+	var courseID = $('#courseSelect option:selected').attr('courseid');	// Selected course
+	var course = getSessionCourseByCourseID(courseID);
+	$('#courseUpdateNameInput').val(course.name);
+	$('#courseUpdateDescInput').val(course.description);
+});
+
+/**
+ * Delete course button clicked
+ */
+$(document).on('click', '#deleteCourseBtn', function(event) {
+	var courseID = $('#courseSelect option:selected').attr('courseid');	// Selected course
+	var course = getSessionCourseByCourseID(courseID);
+	
+	bootbox.dialog({
+		  message: "Deleting a course will delete all students from the course, all results, all questions, and cannot be undone.",
+		  title: "Are you sure?",
+		  buttons: {
+		    danger: {
+		      label: "Yes",
+		      className: "btn-danger",
+		      callback: function() {
+				var url = sessionStorage.getItem("baseURL") + "/courses/" + courseID + "/delete";
+				var userID = sessionStorage.getItem('userID');
+				var data = JSON.stringify({
+						"userId": userID
+				});
+				$.ajax({
+				    type: 'DELETE',
+				    url: 	url,
+				    data: data,
+				    contentType: "application/json",
+				    dataType: 'json',
+				    success: function(data, status){
+				    	// If we don't get an error back, then process the data
+				    	if (status == "success") {
+					    	//$("#updateModal").modal("hide");
+				    		
+				    		// Extract the courseId
+				    		var courseID = data.courseId;
+
+				    		$('[courseId="' + courseID + '"]').remove();	// Update course dropdown
+				    		
+				    		removeCourseFromStorage(courseID);
+					    	
+					    	// Trigger select to update page
+					    	$('#courseSelect option:first').attr('selected', 'selected');
+					    	$('#courseSelect').trigger("change"); // Switch to newly added course (last one in list)
+				    	}
+				    	else {
+				    		alert("There was an error adding the course.");
+				    	}
+				    }
+				});
+		      }
+		    },
+		    main: {
+		      label: "No",
+		      className: "btn-default",
+		      callback: function() {
+		        // Do nothing
+		      }
+		    }
+		  }
+		});
+});
+
+/**
+ * Called when get response from all available courses
+ */
+function courseListCallback(data, status){
+	if(status == "success"){
+		var courses = data.Courses;
+		
+		localStorage.setItem("courses", JSON.stringify(courses));	// Store list of courses
+		//window.courses = courses;
+		
+		var courseDropdown = '';
+		
+		// Add course to list of courses on homepage
+		for (var i = 0; i < courses.length; i++) {
+			var courseID = courses[i].courseId;
+			var courseName = courses[i].name;
+			courseDropdown += '<option courseId="' + courseID + '">' + courseName + '</option>';
+		}
+		
+		$("#courseSelect").append(courseDropdown);
+		
+		var courseID = sessionStorage.getItem('courseID');
+		var alreadySelectedCourseId = GetURLParameter('courseId');
+		
+		// Check to see if course already selected via URL parameter
+		// If courseId not null && if that course exists in dropdown
+		if(alreadySelectedCourseId != null && $('[courseid="' + alreadySelectedCourseId + '"]').length){
+			$('[courseid="' + alreadySelectedCourseId + '"]').prop('selected', true);	// Set as selected course
+			$('#courseSelect').trigger("change");
+			courseID = alreadySelectedCourseId;
+		}
+		else if(courseID != null){
+			$('[courseid="' + courseID + '"]').prop('selected', true);	// Set as selected course
+			$('#courseSelect').trigger("change");
+		}
+		
+		// Generate and add the HTML to the page
+		setHomepageHTMLByCourseID(courses, courseID);
+	}
+}
+
+function setHomepageHTMLByCourseID(courses, courseID){
+	if(courseID == null){
+		if(courses.length > 0){	// If at least one course, display first
+			var course = courses[0];
+		} else {
+			return noCoursesHTML()
+		}
+		
+	} else {
+		
+		if(courses.length > 0){	// If at least one course, display first
+			var course = getCourseByCourseID(courses, courseID);
+		} else {
+			return noCoursesHTML()
+		}
+	}
+	
+	// TODO: Fix. When "classId" passed instead
+	if(course.classId != null)
+		var courseID = course.classId;
+	else
+		var courseID = course.courseId;
+	
+	
+	//See how many students in my class - Disabling this since now checking in the recent student list
+	//determineStudentsInCourse(courseID);
+	fetchRecentResults(courseID);
+	
+	queryString.push('courseId', courseID);	// Push courseID to URL
+	sessionStorage.setItem('courseID', courseID);
+	
+	var courseName = course.name;
+	var instructorName = course.instFName + " " + course.instLName;
+	var courseDescr = course.description
+	setHomepageParameters(courseID, courseName, courseDescr);
+
+}
+
+/**
+ * Get HTML for no courses (jumbotron)
+ */
+function noCoursesHTML(){
+	var noCoursesHTML = 
+		'<div class="jumbotron" id="noLectures">'+
+			'<h1>Not Managing Any Courses</h1>'+
+			'<p>Create one by clicking the "New Course" button above.</p>'+
+		'</div>';
+	return noCoursesHTML;
+}
+
+function determineStudentsInCourse(courseID)
+{
+	var baseURL = sessionStorage.getItem("baseURL");
+	var url = baseURL + "/courses/" + courseID + "/students";
+
+	// Ask the server for a list of courses available for current user
+	$.getJSON(url, studentsInCostudentsInCourseCallbackurseCallback);
+}
+
+function studentsInCourseCallback(data,success)
+{
+	console.log(data);
+	//$('#warnings').empty();
+	if(success=="success")
+		{
+			if(data["Students"]== undefined || data["Students"].length == 0)
+				{
+					var m1 = 'There are currently no students registered for this course';
+					var m2 = 'Students will have to register for the course before they can answer questions';
+
+					$('#warnings').html(noStudentsHTML(m1,m2));
+					return;
+				}
+			else if(data["Students"].length > 0){
+				$('#warnings').empty();
+				return;
+			}
+		}
+
+	var m1 = 'There was an error retreiving your student list';
+	var m2 = 'Reload the page and try again, if the problem persists, please contact our development team.';
+
+	$('#warnings').html(noStudentsHTML(m1,m2));
+
+}
+
+/**
+ * Get HTML for no students in a course  (jumbotron)
+ */
+function noStudentsHTML(message1,message2){
+	var noStudentsHTML = 
+		'<div class="jumbotron" id="noStudents">'+
+			'<h1>'+message1+'</h1>'+
+			'<p>'+message2+'</p>'+
+		'</div>';
+	return noStudentsHTML;
+}
+
+
+/**
+ * Set the HTML page layout for a provided course
+ */
+function setHomepageParameters(courseID, courseName, courseDescr){
+	$('#courseName').html(courseName + ' <small>' + courseDescr + '</small>');
+	$('.courseIdInject').attr('id', courseID);
+}

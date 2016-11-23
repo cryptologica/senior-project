@@ -1,0 +1,135 @@
+$(document).ready(function() {
+	$('#loginSpinner').hide();
+});
+
+// Clicks "Register" button on login page
+$(document).on('click', '#registerButton', function(event) {
+	sessionStorage.setItem("currPage", "register");
+	loadPage("register");
+});
+
+// Login when the user hits enter
+$(document).keydown(function (e) {
+	 var key = e.keyCode;
+	 if(key == 13)  // the enter key code
+	  {
+		 $('#loginBtn')[0].click();
+	    return false;  
+	  }
+	});   
+
+
+// Send login request when loginButton is clicked
+$(document).on('click','#loginBtn',function(event){
+		
+		var userID = $('input[name="userID"]').val();
+		var password = $('input[name="password"]').val();
+		
+		var url = sessionStorage.getItem('baseURL') + "/login";
+
+		if (userID == "" || password == "") {
+			var alert = generateAlert("One or more required fields are empty", 3);
+			$('#errorBlock').html(alert);
+			return;
+		}
+		if (!validateEmail(userID)) {
+			var alert = generateAlert("Invalid Email", 3);
+			$('#errorBlock').html(alert);
+			return;
+		}
+
+		var data = new Object();
+		data.email = userID;
+		data.password = password;
+
+		// Disable login button
+		$(this).attr("disabled", true);
+		
+		// Show spinner so user knows it's "thinking"
+		$('#loginSpinner').show();
+		
+		$.ajax({
+			  method: "POST",
+			  url: url,
+			  contentType: "application/json",
+			  timeout: 10000,
+			  data: JSON.stringify(data),
+			  success: loginSuccessCallback,
+			  error: loginErrorCallback
+			});
+});
+
+/**
+ * This is called to initialize anything on the Login page.
+ */
+function initLoginPage() {
+	$('#loginButton').button();
+	$('#registerButton').button();
+}
+
+
+/**
+ * This is called when a response from the
+ * server is received about logging in.
+ * @param status
+ * @param result
+ */
+function loginSuccessCallback(result, status) {
+	
+	// Stop spinner, we successfully logged in
+	$('#loginSpinner').hide();
+	
+	// Re-enable login button
+	$('#loginBtn').attr("disabled", false);
+	
+	var userID = result.userId;
+	var role = result.role;
+	var name = result.fname + " " + result.lname;
+
+	console.log("Login successful: userId="+userID+" role="+role+" name="+name);
+
+	// Store user info for later use
+	sessionStorage.setItem('currUser', name);
+	sessionStorage.setItem('userID', userID);
+	sessionStorage.setItem('role', role);
+
+	// TODO: Direct to different page for students
+	if (role == "STUDENT" || role == "INSTRUCTOR") {
+		if(role == "STUDENT")
+			{
+			loadPage("home_student");
+			}
+		else
+			{
+			loadPage("home");
+			}
+	}
+	else {
+		loadPage("login");
+	}
+};
+
+/**
+ * This is called when an error response from the
+ * server is received about logging in.
+ * @param status
+ * @param result
+ */
+function loginErrorCallback(result, status) {
+	$('#loginSpinner').hide();
+	$('#loginBtn').attr("disabled", false);
+	if (status == "timeout") {
+		var alert = generateAlert("Connection Timeout.", 4)
+		$('#errorBlock').html(alert);
+	}
+	else {
+		if (typeof result.responseJSON !== 'undefined') {
+			var alert = generateAlert(result.responseJSON.msg, 4);
+			$('#errorBlock').html(alert);
+		}
+		else {
+			var alert = generateAlert("No response was received from the server.", 4);
+			$('#errorBlock').html(alert);
+		}
+	}
+};

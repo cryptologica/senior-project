@@ -1,0 +1,88 @@
+
+img#logo {
+	height: 100px;
+}
+
+.sidebar {
+	top: 50px;
+}
+
+.navbar-left {
+	margin-top: 50px;
+}
+
+.spinner {
+  display: inline-block;
+  opacity: 0;
+  width: 0;
+
+  -webkit-transition: opacity 0.25s, width 0.25s;
+  -moz-transition: opacity 0.25s, width 0.25s;
+  -o-transition: opacity 0.25s, width 0.25s;
+  transition: opacity 0.25s, width 0.25s;
+}
+
+.has-spinner.active {
+  cursor:progress;
+}
+
+.has-spinner.active .spinner {
+  opacity: 1;
+  width: auto; 
+}
+
+a[disabled] { 
+	pointer-events: none; 
+}
+
+body {
+	visibility: hidden;
+}
+
+/* Add bottom border to navbar dropdown menus */
+.dropdown{
+	border-bottom: 1px solid;
+}
+
+/* Courtesy of http://stackoverflow.com/questions/31196980/using-a-glyphicon-as-an-li-bullet-point-bootstrap-3 with modification */
+.presentBullet:before {
+    /*Using a Bootstrap glyphicon as the bullet point*/
+    content: "\e080";
+    font-family: 'Glyphicons Halflings';
+
+    float: left;
+    margin-left: 40px;
+    margin-right: 20px;
+    color: #000000;
+}
+
+.max-width100
+{
+	max-width: 100%;
+}
+
+/*
+
+.centeredBlockContainer {
+  max-width: 100%;
+  text-align: left;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/*if the screen is larger than 900 pixels we make the block container smaller */
+@media (min-width: 900px)
+{
+	.centeredBlockContainer {
+	 max-width: 80vh;
+	 text-align: left;
+	 display: block;
+	 margin-left: auto;
+	 margin-right: auto;
+	}
+}*/
+
+
+
+

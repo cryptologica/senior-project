@@ -1,0 +1,500 @@
+$(document).ready(function() {
+	
+	$.ajaxSetup({ cache: false });	// No caching of ajax calls
+	
+	// Set the base session variables
+	setBaseSessionVars();
+	
+	// Direct to login page if something isn't set correctly
+	var currPage = sessionStorage.getItem('currPage');
+	if (currPage != null && (currPage == "login" || currPage == "register" ) ) {
+		// Do nothing, are trying to log in
+	} else{
+		// Make sure all required variables are set
+		var currUser = sessionStorage.getItem('currUser');
+		var userID = sessionStorage.getItem('userID');
+		var role = sessionStorage.getItem('role');
+		if(currUser == null || userID == null || role == null){
+			sessionStorage.setItem('currPage', 'login');
+			loadPage("login");
+		}
+	}
+	
+	$.get("header.html", function(data) {	// Inject header
+    	$("#header").empty();
+    	$("#header").html(data);
+    	
+    	var role = sessionStorage.getItem('role');
+    	if(role == "STUDENT" && currPage != "home_student" && currPage != "addClass_student" && currPage != "quiz_student")
+    		{
+    		var html = '<button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#studentNav"><span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span></button>';
+    		$("#studentMainNav").append(html);
+    		}
+    	
+    	loadMenu();	// Call method that can be present on page-specific js after header loads
+    	
+    	setLoginInfo();
+	});
+});
+
+
+
+/**
+ * Hide everything until it's loaded.
+ * Prevents flash of unstyled content.
+ */
+$('body').ready(function() {
+	document.body.style.visibility='visible'
+});
+
+
+/**
+ * Set the user's name and toggle the login button to Logout
+ */
+function setLoginInfo(){
+	var name = sessionStorage.getItem('currUser');
+	if(name != null){
+		$('#username').html('<span class="glyphicon glyphicon-user"></span> ' + name);
+		$('#loginLogout').html('<span class="glyphicon glyphicon-log-out"></span> Logout');
+	}
+}
+
+/**
+ * Load the navigation menu
+ */
+function loadMenu(){
+	
+	var currentPage = sessionStorage.getItem('currPage');
+	
+	var menu = $('#menu');
+	$(menu).empty();
+	
+	var home = '<li class="activeMenuItem"><a class="menuItem" page="home" href="#"><i class="fa fa-home"></i> Home</a></li>';
+	var managePolls = '<li class="activeMenuItem"><a class="menuItem" page="managepolls" href="#"><i class="fa fa-bar-chart-o"></i> Manage Polls</a></li>';
+	var manageResults = '<li class="activeMenuItem"><a class="menuItem" page="manageresults" href="#"><i class="fa fa-tasks"></i> Manage Results</a></li>';
+	var manageStudents = '<li class="activeMenuItem"><a class="menuItem" page="managestudents" href="#"><i class="fa fa-user"></i> Manage Students</a></li>';
+	
+	if(currentPage == "home"){
+		$(menu).append(home);
+		$('[page="' + currentPage  + '"]').parent().addClass("active");	// Make this the active menu item
+	} else if (currentPage == "managepolls" || currentPage == "managestudents" || currentPage == "manageresults"){
+		$(menu).append(home);
+		appendCourseList();
+		$(menu).append(managePolls);
+		$(menu).append(manageResults);
+		$(menu).append(manageStudents);
+		
+		$('[page="' + currentPage  + '"]').parent().addClass("active");	// Make this the active menu item
+		
+	/*
+	} else if (currentPage == "poll"){
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="home" href="#">Home</a></li>');
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="managepolls" href="#">Manage Lectures</a></li>');
+		$(menu).append('<li class="activeMenuItem active"><a class="menuItem" page="poll" href="#">Play/Edit Poll</a></li>');
+	} else if (currentPage == "managestudents") {
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="home" href="#">Home</a></li>');
+		$(menu).append('<li class="activeMenuItem active"><a class="menuItem" page="managestudents" href="#">Manage Students</a></li>');
+	} else if (currentPage == "manageresults") {
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="home" href="#">Home</a></li>');
+		$(menu).append('<li class="activeMenuItem active"><a class="menuItem" page="manageresults" href="#">Manage Results</a></li>');
+	*/
+	} else if (currentPage == "results" || currentPage == "poll" ) {
+		
+		$(menu).append(home);
+		appendCourseList();
+		$(menu).append(managePolls);
+		$(menu).append(manageResults);
+		$(menu).append(manageStudents);
+		
+		// FIXME: Finish work in progress on enhanced navigation
+		appendActiveLecture();
+		$(menu).append('<li class="activeMenuItem'+ ( currentPage == "results" ? "" : " active" ) +'"><a class="menuItem" page="poll" href="#">Poll Page</a></li>');
+		$(menu).append('<li class="activeMenuItem'+ ( currentPage == "results" ? " active" : "" ) +'"><a class="menuItem" page="results" href="#">Results</a></li>');
+	}
+	else if (currentPage == "home_student"){
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="home_student" href="#"><i class="fa fa-home"></i> Home</a></li>');
+	}
+	else if (currentPage == "addClass_student"){
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="home_student" href="#"><i class="fa fa-home"></i> Home</a></li>');
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="addClass_student" href="#"><span class="glyphicon glyphicon-search"></span> Add Class</a></li>');
+	}
+	else if (currentPage == "quiz_student"){
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="home_student" href="#"><i class="fa fa-home"></i> Home</a></li>');
+		$(menu).append('<li class="activeMenuItem"><a class="menuItem" page="quiz_student" href="#"><span class="glyphicon glyphicon-education"></span> Quiz</a></li>');
+	}
+}
+
+/**
+ * Adds a list of courses to the navigation bar
+ */
+function appendCourseList(){
+	
+	var courses =  JSON.parse(localStorage.getItem("courses"));
+	//var courses = window.courses;
+	
+	var courseID = sessionStorage.getItem('courseID');
+	var curCourse = getCourseByCourseID(courses, courseID);
+	
+	var displayLength = 18;	// Max width of words
+	
+	if(courses != null){
+		var trimmedActive = trimText(curCourse.name, displayLength);
+		var htmlToAppend =
+			'<li class="dropdown" id="courseSelector"><a class="dropdown-toggle" data-toggle="dropdown" href="#">'+ trimmedActive + '<span class="caret"></span></a>'+
+				'<ul class="dropdown-menu">';
+		
+		for(var i=0; i< courses.length; i++){
+			var trimmedName = trimText(courses[i].name, displayLength);
+			htmlToAppend += '<li><a href="#" class="courseNav" courseNavID="' + courses[i].courseId + '">' + trimmedName + '</a></li>';
+		}
+		// Close off tags
+		htmlToAppend +=
+				'</ul>'+
+			'</li>';
+		$(menu).append(htmlToAppend);
+	}
+}
+
+/**
+ * Append the lecture selector to the navigation menu
+ */
+function appendActiveLecture(){
+	
+	var lectureID = sessionStorage.getItem("lectureID");
+	
+	var lectures =  JSON.parse(localStorage.getItem("lectures"));
+	var curLecture = getLectureByLectureID(lectures, lectureID);
+	
+	var displayLength = 18;	// Max width of words
+	
+	if(lectures != null){
+		var trimmedActive = trimText(curLecture.name, displayLength);
+		var htmlToAppend =
+			'<li class="dropdown" id="lectureSelector"><a class="dropdown-toggle" data-toggle="dropdown" href="#">'+ trimmedActive + '<span class="caret"></span></a>'+
+				'<ul class="dropdown-menu">';
+		
+		for(var i=0; i< lectures.length; i++){
+			var trimmedName = trimText(lectures[i].name, displayLength);
+			htmlToAppend += '<li><a href="#" class="lectureNav" lectureNavID="' + lectures[i].lectureId + '">' + trimmedName + '</a></li>';
+		}
+		// Close off tags
+		htmlToAppend +=
+				'</ul>'+
+			'</li>';
+		$(menu).append(htmlToAppend);
+	}
+	
+}
+
+
+/**
+ * Different course selected on the navigation menu
+ */
+$(document).on('click', '.courseNav', function(event) {
+	var selectedCourseID = $(this).attr("coursenavid");
+	sessionStorage.setItem('courseID', selectedCourseID);
+	
+	// Load the active page with the new course
+	var activePage = $('#menu').find('.active').find('.menuItem').attr('page');
+	
+	if(activePage == "poll" || activePage == "results")	// Course changed, so load polls page
+		loadPage("managepolls");
+	else
+		loadPage(activePage);
+});
+
+/**
+ * Different lecture selected on the navigation menu
+ */
+$(document).on('click', '.lectureNav', function(event) {
+	var selectedLectureID = $(this).attr("lecturenavid");
+	sessionStorage.setItem('lectureID', selectedLectureID);
+	
+	// Load the active page with the new course
+	var activePage = $('#menu').find('.active').find('.menuItem').attr('page');
+	loadPage(activePage);
+});
+
+
+/**
+ * Navigation menu item clicked
+ */
+$(document).on('click', '.menuItem', function(event) {
+	var page = $(this).attr("page");
+	loadPage(page);
+});
+
+/**
+ * Logo clicked
+ */
+$(document).on('click', '#logo', function(event) {
+	var role = sessionStorage.getItem('role');
+	if(role == "STUDENT")
+	{
+	loadPage("home_student");
+	}
+else
+	{
+	loadPage("home");
+	}
+});
+
+/**
+ * Login / Logout button clicked
+ */
+$(document).on('click', '#loginLogout', function(event) {
+	var userID = sessionStorage.getItem('userID');
+	if(userID == null){
+		loadPage("login");
+	} else {		// Trying to log out
+		sessionStorage.clear();
+		setBaseSessionVars();
+		loadPage("login");
+	}
+});
+
+/**
+ * When click on Username / Register button
+ */
+$(document).on('click', '#username', function(event) {
+	var currUser = sessionStorage.getItem('currUser');
+	if(currUser == null){
+		loadPage("register");
+	} else {		// Trying to modify user's profile
+		// TODO: When want to access user's profile navigate there
+	}
+});
+
+
+/**
+ * Call this on load and after clearing the session.
+ */
+function setBaseSessionVars() {
+	sessionStorage.setItem('baseURL', '/TuringPoint/rest');
+	sessionStorage.setItem('isProduction', true);
+}
+
+/**
+ * Redirect user to desired page
+ */
+function loadPage(page){
+	sessionStorage.setItem('currPage', page);
+	window.location.href = "./" + page + ".html";
+}
+
+
+/*
+ * Helper Methods Below
+ */
+
+/**
+ * Returns true if it's a valid email.
+ * Returns false otherwise.
+ * Source: StackOverflow: http://stackoverflow.com/questions/46155/validate-email-address-in-javascript
+ * @param email
+ * @returns boolean
+ */
+function validateEmail(email) {
+    var re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    return re.test(email);
+}
+
+/**
+ * Generates HTML for a Bootstrap alert.
+ * @param msg: The message you want to display
+ * @param type: Success=1, Info=2, Warning=3, Error=4
+ */
+function generateAlert(msg, type) {
+	var result;
+	switch (type) {
+		case 1:
+			result = '<div class="alert alert-success"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><strong>Success:</strong> ' + msg + '</div>';
+			break;
+		case 2:
+			result = '<div class="alert alert-info"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><strong>Info:</strong> ' + msg + '</div>';
+			break;
+		case 3:
+			result = '<div class="alert alert-warning"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><strong>Warning:</strong> ' + msg + '</div>';
+			break;
+		case 4:
+			result = '<div class="alert alert-danger"><a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a><strong>Error:</strong> ' + msg + '</div>';
+			break;
+	}
+	return result;
+}
+
+/**
+ * Generates HTML for a Bootstrap alert, without dismiss option.
+ * @param msg: The message you want to display
+ * @param rowClass: bootstrap column class (ex: col-md-9), or whatever additional classes you want
+ * @param type: Success=1, Info=2, Warning=3, Error=4
+ */
+function generateAlertNonDismiss(msg, rowClass, type) {
+	var result;
+	switch (type) {
+		case 1:
+			result = '<div class="alertDiv ' + rowClass + '"><div class="alert alert-success"> ' + msg + '</div></div>';
+			break;
+		case 2:
+			result = '<div class="alertDiv ' + rowClass + '"><div class="alert alert-info">' + msg + '</div></div>';
+			break;
+		case 3:
+			result = '<div class="alertDiv ' + rowClass + '"><div class="alert alert-warning">' + msg + '</div></div>';
+			break;
+		case 4:
+			result = '<div class="alertDiv ' + rowClass + '"><div class="alert alert-danger"> ' + msg + '</div></div>';
+			break;
+	}
+	return result;
+}
+
+/**
+ * Given a list of courses objects and a course ID return the course object with the specified courseID
+ */
+function getCourseByCourseID(courses, courseID){
+	var indexToLoad = 0;	// Default
+	if(courseID != null){
+		for (var i = 0; i < courses.length; i++) {	// Search for the desired course by courseID
+			var currCourseID = courses[i].courseId;
+			
+			// TODO: Clean up when "classId" passed as "courseId" like it should
+			if(courseID == currCourseID || (courses[i].classId != null && courseID == courses[i].classId )){
+				return courses[i];
+			}
+		}
+	}
+	return null;	// Not found
+}
+
+
+/************************************************************************************
+ ***************************** Lecture Storage Helpers	*********************************
+ *************************************************************************************/
+
+/**
+ * Given a list of lecture objects and a lectureID return the lecture object with the specified lectureID
+ */
+function getLectureByLectureID(lectures, lectureID){
+	var indexToLoad = 0;	// Default
+	if(lectures != null){
+		for (var i = 0; i < lectures.length; i++) {	// Search for the desired course by courseID
+			var currLectureID = lectures[i].lectureId;
+			if(lectureID == currLectureID){
+				return lectures[i];
+			}
+		}
+	}
+	return null;	// Not found
+}
+
+
+/**
+ * Delete a course from the session storage course list
+ */
+function removeLectureFromStorage(lectureId){
+	var lectures = JSON.parse(localStorage.getItem("lectures"));
+	for(var i=0; i<lectures.length; i++){
+		if(lectures[i].lectureId == lectureId){
+			lectures.splice(i, 1);
+			break;
+		}
+	}
+	localStorage.setItem("lectures", JSON.stringify(lectures));	// Update list of courses
+}
+
+/**
+ * Add a course from the session storage course list
+ */
+function addLectureToStorage(lectures){
+	// Add new course to the local storage
+	var lectures = JSON.parse(localStorage.getItem("lectures"));
+	courses.push(lectures);
+	localStorage.setItem("lectures", JSON.stringify(lectures));	// Store list of courses
+}
+
+/**
+ * Update a course from the session storage course list
+ */
+function updateLectureInStorage(lecture){
+	var lectures = JSON.parse(localStorage.getItem("lectures"));
+	for(var i=0; i<lectures.length; i++){
+		if(lectures[i].lectureId == lecture.lectureId){
+			lectures[i].name = lecture.name;
+			break;
+		}
+	}
+	localStorage.setItem("lectures", JSON.stringify(lectures));	// Update list of courses
+}
+
+/**
+ * Get the size of (number of) lectures in the storage session
+ */
+function getLecturesLength(){
+	return JSON.parse(localStorage.getItem("lectures")).length;
+}
+
+/************************************************************************************
+ ***************************** Course Storage Helpers	*********************************
+ *************************************************************************************/
+
+/**
+ * Return the session storage course object with the specified courseID.
+ * Assumes session storage course is set, otherwise return null
+ */
+function getSessionCourseByCourseID(courseID){
+	var courses =  JSON.parse(localStorage.getItem("courses"));
+	return getCourseByCourseID(courses, courseID);
+}
+
+
+/**
+ * Delete a course from the session storage course list
+ */
+function removeCourseFromStorage(courseId){
+	var courses = JSON.parse(localStorage.getItem("courses"));
+	for(var i=0; i<courses.length; i++){
+		if(courses[i].courseId == courseId){
+			courses.splice(i, 1);
+			break;
+		}
+	}
+	localStorage.setItem("courses", JSON.stringify(courses));	// Update list of courses
+}
+
+/**
+ * Add a course from the session storage course list
+ */
+function addCourseFromStorage(course){
+	// Add new course to the local storage
+	var courses = JSON.parse(localStorage.getItem("courses"));
+	courses.push(course);
+	localStorage.setItem("courses", JSON.stringify(courses));	// Store list of courses
+}
+
+/**
+ * Update a course from the session storage course list
+ */
+function updateCourseInStorage(course){
+	var courses = JSON.parse(localStorage.getItem("courses"));
+	for(var i=0; i<courses.length; i++){
+		if(courses[i].courseId == course.courseId){
+			courses[i].name = course.name;
+			courses[i].description = course.description;
+			break;
+		}
+	}
+	localStorage.setItem("courses", JSON.stringify(courses));	// Update list of courses
+}
+
+/**
+ * Trim the input text to the given length and append an ellipsis "..." to the end
+ */
+function trimText(input, length){
+	if(input.length >= length){	// If too long and needs a trimming
+		var trimmed = input.substring(0, length);
+		trimmed += '...';
+		return trimmed;
+	} else {
+		return input;	// Return input, doesn't need a trimming
+	}
+}

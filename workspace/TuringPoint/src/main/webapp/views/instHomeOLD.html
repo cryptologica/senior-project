@@ -1,0 +1,79 @@
+
+
+		<div id="courseGroupingsDiv">
+			<fieldset id="coursesID">
+				<legend>Courses</legend>
+				<!-- Courses will be inserted into here -->
+			</fieldset>	
+		</div>
+		
+		
+		
+
+    <a href="#myPopup" data-rel="popup" class="ui-btn ui-btn-inline ui-corner-all ui-icon-check ui-btn-icon-left popupForm">Show Popup Form</a>
+
+    <div data-role="popup" id="myPopup" class="ui-content" style="min-width:250px;">
+      <form method="post" action="demoform.asp">
+        <div>
+          <h3>Login information</h3>
+          <label for="usrnm" class="ui-hidden-accessible">Username:</label>
+          <input type="text" name="user" id="usrnm" placeholder="Username">
+          <label for="pswd" class="ui-hidden-accessible">Password:</label>
+          <input type="password" name="passw" id="pswd" placeholder="Password">
+          <label for="log">Keep me logged in</label>
+          <input type="checkbox" name="login" id="log" value="1" data-mini="true">
+          <input type="submit" data-inline="true" value="Log in">
+        </div>
+      </form>
+    </div>
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		<!--  
+		<button title="Click to add a course" id="add-course" role="button">
+			<span>Add Course</span>
+		</button>
+		-->
+		
+<!--  	
+  <div data-role="main" class="ui-content">
+
+	   	<a href="#newCoursePopup" data-rel="popup" class="ui-btn ui-btn-inline ui-corner-all ui-icon-check ui-btn-icon-left">Create New Course</a>
+			
+		<!-- Add forms and modals here. Don't render them until specific button is clicked --> <!-- 
+		<div data-role="popup" id="newCoursePopup" class="ui-content" style="min-width:250px;">
+	      <form method="post" action="demoform.asp" class="addCourseForm">
+	        <div>
+	          <h3>Create New Course</h3>
+	          <label for="name"class="ui-hidden-accessible">Course Name:</label>
+	          <input type="text" name="name" id="name" placeholder="New Course" class="text">
+	          <label for="descr" class="ui-hidden-accessible">Description:</label>
+	          <input type="text" name="descr" id="descr" placeholder="Course Description" class="text">
+	          <input type="submit" data-inline="true" value="Log in">
+	        </div>
+	      </form>
+	    </div>
+   </div>
+ -->
+
+    
+<!-- OLD FORM
+<div id="dialog-form" title="Create new course">
+	<form class="addCourseForm">
+		<fieldset id="formBox">
+			<label for="name">Course Name</label> 
+			<input type="text" name="name" id="name" class="text">
+			<label for="descr">Description</label>
+			<input type="text" name="descr" id="descr" class="text">
+			<!-- Allow form submission with keyboard without duplicating the dialog button --> <!--
+			<input type="submit" tabindex="-1" style="position: absolute; top: -1000px">
+		</fieldset>
+	</form>
+</div>
+ -->

@@ -1,0 +1,33 @@
+/* Stop button */
+.btn-square {
+	width: 31px;
+	height: 31px;
+}
+
+/* Stop symbol on stop buttons */
+.glyphicon-stop {
+	right: 5px;
+	top: -0.5px;
+}
+
+#side-menu-parent {
+	overflow-y: auto;
+	height: 75vh;
+}
+
+ul#side-menu {
+	overflow-y: auto;
+	max-height: 550px;
+}
+
+div#side-menu.in,
+div#side-menu.collapsing {
+    display: block!important;
+}
+
+.sidebar-nav {
+	margin-top: -15px;
+}
+
+#unpublishLectureBtn {
+	margin-bottom: 15px; 

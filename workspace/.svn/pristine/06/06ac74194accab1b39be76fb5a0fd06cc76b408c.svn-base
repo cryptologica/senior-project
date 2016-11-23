@@ -1,0 +1,54 @@
+/**
+ * Initializations
+ */
+$(document).ready(function() {
+	
+	// Remove any previously set question id
+	sessionStorage.removeItem("currQuestion");
+	
+	window.currentTab = "edit"
+	
+	var lectureID = sessionStorage.getItem("lectureID");
+	if (lectureID == null)	// Direct to login page if lectureID not set
+		loadpage("login");
+
+	initTinyMCE();
+	initTinyMCE2();
+	
+	window.presentationFontSize = sessionStorage.getItem("presentationFontSize")
+	if (window.presentationFontSize == null)
+	{
+		sessionStorage.setItem("presentationFontSize",3)
+		window.presentationFontSize = sessionStorage.getItem("presentationFontSize")
+	}
+		
+	redrawFontSizeButtonsAndPresentationFonts();
+	
+	if(window.presentationWindow != null)
+	{
+		window.presentationWindow.$(window.presentationWindow.document).trigger("questionChange");
+		window.presentationWindow.$(window.presentationWindow.document).trigger("fontChange");
+	}
+	
+	///init result vis variable
+	window.resultVis = null;
+	
+	// Tooltip Properties on Tabs
+	$('[data-toggle="tab"]').tooltip({
+	    trigger: 'hover',
+	    placement: 'top',
+	    animate: true,
+	    delay: {show: 1000, hide: 100},
+	    container: 'body'
+	});
+	
+	// Init question publish Switch
+	$("#publishSwitch").bootstrapSwitch({offColor: 'danger'});
+	
+	// Sometimes screen focus is wonky, just scroll to top after initializing
+	window.scrollTo(0,0);
+});
+
+/**
+ **	NOTE: Polls page JS methods moved to pollscommon.js so that they can be used on questionbank.js too
+ **/
