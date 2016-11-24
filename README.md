@@ -1,5 +1,5 @@
 # senior-project
-This project was created by me (JT Newsome), Scott Hadley, Tony Niven, and Sean O'Connor for our senior project at the Univeristy of Utah, 2015-2016. 
+This code was created by me (JT Newsome), Scott Hadley, Tony Niven, and Sean O'Connor for our senior project at the Univeristy of Utah, 2015-2016. It's an educational polling system that enables instructors to easily administer quizzes or polls to their students at little or no monetary cost.
 
 If you would like to use this project **please ask me first** so I can ask my teammates if it's ok with them! Thanks.
 
